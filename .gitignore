@@ -1,12 +1,19 @@
-.ipynb_checkpoints
-.vscode
-__pycache__
+# Editors
+.vscode/
+.idea/
+
+# MacOS
 .DS_Store
-lib
-*data/
-figs*/
-output*/
-csvs/
-notebooks/
-plotting/*_input*
-stats361-env
+
+# Distribution / packaging
+__pycache__/
+lib/
+
+# Outputs
+data/
+output/
+res/
+figs/
+
+# Scratchwork 
+_extras/

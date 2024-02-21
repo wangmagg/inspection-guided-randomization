@@ -1,26 +1,22 @@
-# Restricted Randomization for Network Interferference and Network-correlated Outcomes
-Code for STATS361 SP2023 final project simulations.
+# Criteria-based Randomization
+Code to run simulations for Criteria-based Randomization (CBR), a restricted randomization framework that permits flexibly defined design criteria.
 
 ## Setup
 __Installation__ <br />
-To clone this repository, run the following commands <br />
+To clone this repository, run the following <br />
 ```
-git clone https://github.com/wangmagg/stats361-project.git
-cd stats361-project
+git clone https://github.com/wangmagg/cbr.git
+cd cbr
 ```
 
 __Python dependencies__ <br />
-To set up and activate a Python virtual environment, run the following <br />
-```
-python3 -m venv stats361-env
-source ./stats361-env/bin/activate
-pip install -m env/requirements.txt
-```
-To set up and activate a Conda environment, run the following <br />
+Python dependencies are specified in `env/requirements.txt`. To set up and activate a Conda environment with the requisite dependicies, run the following <br />
 ```
 conda env create -f env/environment.yml
-conda activate stats361-env
+conda activate cbr-env
 ```
+
+## File Structure
 
 ## Usage
 To reproduce the simulation results from the report, run the following scripts (in this order): <br />

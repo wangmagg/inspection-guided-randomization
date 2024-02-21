@@ -1,17 +1,6 @@
-name: stats361-env
-channels:
-  - anaconda
-  - conda-forge
-  - defaults
+name: cbr-env-test
 dependencies:
-  - matplotlib=3.7.1
-  - networkx=2.7.1
-  - numpy=1.22.3
-  - pandas=1.4.2
-  - python=3.10.4
-  - scipy=1.7.3
-  - seaborn=0.12.2
-  - tqdm=4.65.0
-prefix: ./env
- 
-
+  - python=3.10
+  - pip
+  - pip:
+    - -r requirements.txt
