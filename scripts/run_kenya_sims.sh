@@ -1,8 +1,8 @@
 #!/bin/bash
 
 declare -a params_fname_arr=(\
-    "params/kenya/params_sigma_scale-0.01.csv" \
-    "params/kenya/params_sigma_scale-1.0.csv")  
+    "kenya_params/params_sigma_scale-0.01.csv" \
+    "kenya_params/params_sigma_scale-1.0.csv")  
 declare -a rand_mdl_name_arr=("restricted" "restricted-genetic")
 declare -a gamma_arr=(0.5 1.0)
 declare -a rep_arr=(0 1 2 3)
