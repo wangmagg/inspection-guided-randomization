@@ -85,7 +85,7 @@ then
         done
     done
 
-    python3 -m src.sims.collect_multarm_results
+    python3 -m src.sims.collect_multarm_results 
 fi
 
 

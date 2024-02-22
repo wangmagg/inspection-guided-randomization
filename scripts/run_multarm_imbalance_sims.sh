@@ -92,7 +92,7 @@ then
     done
 
     python3 -m src.sims.collect_multarm_results \
-        --exp-dir mult-arm-imbalance
+        --exp-subdir mult-arm-imbalance
 
 fi
 
