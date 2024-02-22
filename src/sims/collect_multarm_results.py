@@ -6,6 +6,14 @@ import argparse
 from src.sims.trial import *
 from src.sims.run_multarm_trial import *
 
+def se_handle_none(x):
+    x_no_none = [el for el in x if el is not None]
+    if len(x_no_none) == 0:
+        return None
+    return np.std(x.to_numpy()) / np.sqrt(len(x))
+
+
+
 if __name__ == "__main__":
     """
     Collect results from simulated multi-arm trials across different configurations
@@ -75,13 +83,13 @@ if __name__ == "__main__":
         mean_min_smd = ('min_smd', 'mean'),
         se_min_smd = ('min_smd', lambda x: np.std(x.to_numpy()) / np.sqrt(len(x))),
         mean_tau_true = ('tau_true', 'mean'),
-        se_tau_true = ('tau_true', lambda x: np.std(x.to_numpy()) / np.sqrt(len(x))),
+        se_tau_true = ('tau_true', lambda x: se_handle_none(x)),
         mean_bias = ('bias', 'mean'),
-        se_bias = ('bias', lambda x: np.std(x.to_numpy()) / np.sqrt(len(x))),
+        se_bias = ('bias', lambda x: se_handle_none(x)),
         mean_rmse = ('rmse', 'mean'),
-        se_rmse = ('rmse', lambda x: np.std(x.to_numpy()) / np.sqrt(len(x))),
+        se_rmse = ('rmse', lambda x: se_handle_none(x)),
         mean_rr = ('rr', 'mean'),
-        se_rr = ('rr', lambda x: np.std(x.to_numpy()) / np.sqrt(len(x)))).reset_index()
+        se_rr = ('rr', lambda x: se_handle_none(x))).reset_index()
         
     res_dir = Path(args.res_dir) / args.exp_subdir
     if not res_dir.exists():

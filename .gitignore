@@ -15,5 +15,8 @@ output/
 res/
 figs/
 
-# Scratchwork 
+# Project-specific
 _extras/
+scripts/run_multarm_imbalance_sims.sh
+scripts/run_multarm_imbalance_visualization.sh
+
