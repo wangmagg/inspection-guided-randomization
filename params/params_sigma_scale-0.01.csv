@@ -1,4 +1,0 @@
-﻿var_name,level,mu,sigma_set,sigma_sch_in_set,sigma_ind_in_sch,beta
-x0,ind,0,1,1,1,1.0
-x1,ind,0,1,0.01,0.01,2.0
-x2,ind,0,1,0.01,0.001,3.0

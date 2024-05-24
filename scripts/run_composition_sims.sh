@@ -2,7 +2,7 @@
 
 declare -a n_per_arm_arr=(20 30)
 declare -a n_z_arr=(50000 100000)
-declare -a rep_arr=(0 1 2 3)
+declare -a rep_arr=(0)
 
 run_flag=$1
 
@@ -42,12 +42,28 @@ then
             python3 -m src.sims.run_composition_trial \
                 --n-per-arm $n_per_arm \
                 --rep-to-run $rep \
+                --rand-mdl-name group-formation-restricted-genetic \
+                --fitness-fn-name max-mahalanobis \
+                --run-trial \
+                --analyze-trial
+
+            python3 -m src.sims.run_composition_trial \
+                --n-per-arm $n_per_arm \
+                --rep-to-run $rep \
                 --rand-mdl-name group-formation-restricted \
-                --fitness-fn-name sum-max-smd \
+                --fitness-fn-name sum-max-abs-smd \
+                --run-trial \
+                --analyze-trial
+
+            python3 -m src.sims.run_composition_trial \
+                --n-per-arm $n_per_arm \
+                --rep-to-run $rep \
+                --rand-mdl-name group-formation-restricted-genetic \
+                --fitness-fn-name sum-max-abs-smd \
                 --run-trial \
                 --analyze-trial
         done
     done
 
-    python3 -m src.sims.collect_composition_results
+    python3 -m src.sims.collect_results_composition
 fi

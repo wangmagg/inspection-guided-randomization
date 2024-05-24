@@ -1,6 +1,7 @@
+from itertools import combinations
+import numpy as np
 from pathlib import Path
 import pickle
-import numpy as np
 
 from src.sims.trial import SimulatedTrial, SimulatedTrialConfig
 from typing import List, Optional
@@ -12,7 +13,8 @@ class CompositionTrialConfig(SimulatedTrialConfig):
     def __init__(self):
         super().__init__()
 
-        self.add_argument('--exp-dir', type=str, default='composition')
+        self.add_argument('--output-subdir', type=str, default='composition')
+        self.add_argument('--data-subdir', type=str, default='composition')
         
         self.add_argument('--potential-outcome-mdl-name', type=str, default='classroom-composition')
         self.add_argument('--p-comps', type=float, nargs='+', default = [0.5, 0.3, 0.7])
@@ -26,6 +28,8 @@ class CompositionTrialConfig(SimulatedTrialConfig):
         self.add_argument('--rand-mdl-name', type=str, default='group-formation')
         self.add_argument('--n-z', type=int, default=int(1e5))
         self.add_argument('--n-cutoff', type=int, default=500)
+        self.add_argument("--add-all-mirrors", type=bool, default=True)
+        self.add_argument("--n-batches", type=int, default=None)
         self.add_argument('--fitness-fn-name', type=str, default=None)
         self.add_argument('--fitness-fn-weights', type=float, nargs='+', default=None)
         self.add_argument('--tourn-size', type=int, default=2)
@@ -33,6 +37,7 @@ class CompositionTrialConfig(SimulatedTrialConfig):
         self.add_argument('--cross-rate', type=float, default=0.95)
         self.add_argument('--mut-rate', type=float, default=0.01)
         self.add_argument('--genetic-iters', type=int, default=3)
+        self.add_argument('--eps', type=float, default=0.05)
         
         self.add_argument('--estimator-name', type=str, default='diff-in-means-mult-arm')
         self.add_argument('--alpha', type=float, default=0.05)
@@ -52,14 +57,21 @@ class SimulatedCompositionTrial(SimulatedTrial):
         # Initialize mask of individuals with the salient attribute
         self.X_on = None
 
-        # Set number of compositions
-        self.n_comps = len(self.config.p_comps)
-
         # Set number of individuals
-        self.config.n = self.config.n_arms * self.config.n_per_arm * self.n_comps  
+        self.config.n = self.config.n_arms * self.config.n_per_arm * len(self.config.p_comps)
 
-        # Set pairs of groups with the same composition but different treatment 
-        self.arm_pairs = np.arange(self.config.n_arms * self.n_comps).reshape(self.n_comps, self.config.n_arms)
+        # Get pairs of groups with the same composition but different treatment 
+        same_comp_diff_trt = np.arange(self.config.n_arms * len(self.config.p_comps)).reshape(len(self.config.p_comps), self.config.n_arms)
+        self.same_comp_diff_trt  = same_comp_diff_trt
+
+        arm_compare_pairs = []
+        arm_compare_pairs.append(same_comp_diff_trt)
+        # Add pairs of groups with same treatment but different composition
+        for i in range(self.config.n_arms):
+            same_trt_diff_comp = np.array(list(combinations(same_comp_diff_trt[:, i], 2)))
+            arm_compare_pairs.append(same_trt_diff_comp)
+        
+        self.arm_compare_pairs = np.vstack(arm_compare_pairs)
         
         return
     
@@ -99,37 +111,35 @@ class SimulatedCompositionTrial(SimulatedTrial):
         top_dir = Path(top_dir) 
         save_p_comps_subdir = f"p-comps-{self.config.p_comps}"
         save_n_per_arm_subdir = f"n-per-arm-{self.config.n_per_arm}"
-        save_fname = f"{self.config.rep_to_run}.pkl"
         
         if inner_dirs is None:
-            return top_dir / save_p_comps_subdir / save_n_per_arm_subdir / save_fname
+            return top_dir / save_p_comps_subdir / save_n_per_arm_subdir
         else:
-            return top_dir / save_p_comps_subdir / save_n_per_arm_subdir / inner_dirs / save_fname
+            return top_dir / save_p_comps_subdir / save_n_per_arm_subdir / inner_dirs
     
     @property
     def data_path(self):
         """
         Path for saving trial data
         """
-        save_dir = Path(self.config.data_dir) / self.config.exp_dir
-        return self._path(save_dir)
+        save_dir = Path(self.config.data_dir) / self.config.data_subdir
+        return self._path(save_dir) / f"{self.config.rep_to_run}.pkl"
     
     @property
     def pickle_path(self):
         """
         Path for saving trial object
         """
-        save_dir = Path(self.config.out_dir) / self.config.exp_dir
+        save_dir = Path(self.config.out_dir) / self.config.output_subdir
         save_rand_mdl_subdir = f"rand-{self.rand_mdl.name}"
         save_n_z_subdir = f"n-z-{self.config.n_z}"
         
-        return self._path(save_dir, f"{save_n_z_subdir}/{save_rand_mdl_subdir}")
+        return self._path(save_dir, f"{save_n_z_subdir}/{save_rand_mdl_subdir} / data-rep-{self.config.rep_to_run}_run-seed-{self.config.seed}.pkl")
     
     def _set_attributes_from_data(self, data):
         """
         Set additional class attributes after generating data
         """
-
         # Set potential outcomes and covariates
         self.y_0, self.y_1, self.X = data
 

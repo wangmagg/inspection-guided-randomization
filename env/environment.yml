@@ -1,4 +1,4 @@
-name: cbr-env-test
+name: cbr-env
 dependencies:
   - python=3.10
   - pip

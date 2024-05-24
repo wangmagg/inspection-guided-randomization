@@ -2,338 +2,488 @@ import argparse
 from pathlib import Path
 import pickle
 
-from src.design.fitness_functions import *
-from src.sims.trial import *
-from src.sims.run_kenya_trial import *
-from src.sims.run_multarm_trial import *
-from src.sims.run_composition_trial import *
+from src.design.fitness_functions import Fitness
+from src.sims.run_kenya_trial import SimulatedKenyaTrial
+from src.sims.run_multarm_trial import SimulatedMultiArmTrial
+from src.sims.run_composition_trial import SimulatedCompositionTrial
+from src.sims.run_network_trial import SimulatedNetworkTrial
 
-import src.visualization.scatter.scatter_error_vs_score as scatter_error_vs_score 
-import src.visualization.scatter.scatter_2dscore_disagg as scatter_2dscore_disagg 
-import src.visualization.hist.hist_same_z_validity as hist_same_z_validity 
-import src.visualization.hist.hist_z as hist_z
-import src.visualization.box.box_covariate_distr_per_arm as box_covariate_distr_per_arm 
-import src.visualization.box.box_covariate_balance as box_covariate_balance 
-import src.visualization.box.box_covariate_pairwise_balance as box_covariate_pairwise_balance 
+from src.visualization.scatter.scatter_error_vs_score import (
+    make_scatter_error_vs_score_fig,
+)
+from src.visualization.scatter.scatter_2dscore_disagg import (
+    make_scatter_2dscore_disagg_fig,
+)
+from src.visualization.scatter.scatter_ranks import make_scatter_ranks_fig
+from src.visualization.hist.hist_same_z_validity import make_hist_same_z_validity_fig
+from src.visualization.hist.hist_z import make_hist_z_fig
+from src.visualization.hist.hist_score import make_hist_score_fig
+from src.visualization.hist.hist_2dscore_disagg import make_hist_2dscore_disagg_fig
+
+from src.visualization.box.box_covariate_distr_per_arm import (
+    make_covariate_distr_per_arm_fig,
+)
+from src.visualization.box.box_covariate_balance import make_covariate_balance_fig
+from src.visualization.box.box_covariate_pairwise_balance import (
+    make_covariate_pairwise_balance_fig,
+)
+
+from src.visualization.kenya.covar import (
+    plot_kenya_school_locs,
+    plot_y0_distr_across_sets,
+    plot_deg_distr_across_sets,
+)
+from src.visualization.kenya.adjacency_dist import (
+    plot_kenya_adjacency,
+    plot_kenya_adj_v_dist,
+    plot_kenya_pairwise_dists,
+)
+from src.visualization.kenya.deg_z_y import make_deg_z_fig, make_deg_y_fig, make_y_z_fig
+
+from src.visualization.utils.gather_trials import (
+    multarm_trial_set,
+    composition_trial_set,
+    kenya_trial_set,
+    network_trial_set,
+)
 
 
-def _kenya_trial_sets(n_z_subdir, rand_mdl_subdir, include_settlement_cluster=True):
-    trial_sets = {}
-    fitness_fns = {}
-    for trial_fname in rand_mdl_subdir.glob("*.pkl"):
-        print(trial_fname)
-        trial_set = {}
+def network_randomization_plots(args):
+    # check if any randomization plots are requested
+    if not any(
+        [
+            fig_type in args.fig_types
+            for fig_type in [
+                "scatter_error_vs_score",
+                "scatter_2dscore_disagg",
+                "scatter_ranks",
+                "hist_same_z_validity",
+                "hist_z",
+                "hist_z_uniqueness",
+                "hist_score",
+                "hist_2dscore_disagg",
+                "heat_adj_z",
+                "scatter_z_y",
+            ]
+        ]
+    ):
+        return
+    output_dir = (
+        Path(args.output_dir)
+        / args.exp_subdir
+        / args.net_mdl_subdir
+        / args.n_z_subdir
+        / args.po_mdl_subdir
+    )
+    print(output_dir)
+    save_dir = Path(args.fig_dir) / args.exp_subdir
+    save_prefix = f"data-rep-{args.data_rep}_run-seed-{args.run_seed}"
 
-        # Load complete randomization results for school-level clustering
-        cr_trial_fname = n_z_subdir / "rand-complete_cluster-school" / trial_fname.name
-        with open(cr_trial_fname, "rb") as f:
-            cr_trial = pickle.load(f)
-        cr_trial.loader = SimulatedTrialLoader(cr_trial.config)
-        cr_trial.set_data_from_config()
-        cr_trial.set_design_from_config()
-        trial_set["complete_cluster-school"] = cr_trial
+    for rand_mdl_subdir in args.rand_mdl_subdirs:
+        print(f"\t{rand_mdl_subdir}")
+        trial_fname = f"data-rep-{args.data_rep}_run-seed-{args.run_seed}.pkl"
+        trial_path = output_dir / rand_mdl_subdir / trial_fname
 
-        # Load complete randomization results for settlement-level clustering
-        if include_settlement_cluster:
-            cr_set_trial_fname = (
-                n_z_subdir / "rand-complete_cluster-settlement" / trial_fname.name
-            )
-            with open(cr_set_trial_fname, "rb") as f:
-                cr_set_trial = pickle.load(f)
-            cr_set_trial.loader = SimulatedTrialLoader(cr_set_trial.config)
-            cr_set_trial.set_data_from_config()
-            cr_set_trial.set_design_from_config()
-            trial_set["complete_cluster-settlement"] = cr_set_trial
+        trial_sets, fitness_fns = network_trial_set(trial_path)
 
-        # Load restricted randomization results
-        with open(trial_fname, "rb") as f:
-            trial = pickle.load(f)
-        trial.loader = SimulatedTrialLoader(trial.config)
-        trial.set_data_from_config()
-        trial.set_design_from_config()
-        trial_set[trial.rand_mdl.name] = trial
-        fitness_fns[int(trial_fname.stem)] = trial.rand_mdl.fitness_fn
-
-        # Load restricted randomization with genetic search results
-        genetic_trial_fname = (
-            n_z_subdir
-            / f"rand-restricted-genetic_{trial.rand_mdl.fitness_fn.name}_cluster-school"
-            / trial_fname.name
+        save_subdir = (
+            save_dir
+            / args.net_mdl_subdir
+            / args.n_z_subdir
+            / args.po_subdir
+            / rand_mdl_subdir
         )
+        if not save_subdir.exists():
+            save_subdir.mkdir(parents=True)
 
-        if genetic_trial_fname.exists():
-            with open(genetic_trial_fname, "rb") as f:
-                genetic_trial = pickle.load(f)
-            genetic_trial.loader = SimulatedTrialLoader(genetic_trial.config)
-            genetic_trial.set_data_from_config()
-            genetic_trial.set_design_from_config()
-            trial_set[genetic_trial.rand_mdl.name] = genetic_trial
-
-        trial_sets[int(trial_fname.stem)] = trial_set
-
-    return trial_sets, fitness_fns
+        for fig_type in args.fig_types:
+            if fig_type == "scatter_error_vs_score":
+                make_scatter_error_vs_score_fig(
+                    trial_sets, fitness_fns, save_subdir, save_prefix
+                )
+            if fig_type == "scatter_2dscore_disagg":
+                make_scatter_2dscore_disagg_fig(
+                    trial_sets, args.axis_fns, save_subdir, save_prefix
+                )
+            if fig_type == "hist_same_z_validity":
+                make_hist_same_z_validity_fig(trial_sets, save_subdir, save_prefix)
+            if fig_type == "hist_z":
+                make_hist_z_fig(trial_sets, save_subdir, save_prefix)
+            if fig_type == "hist_score":
+                make_hist_score_fig(trial_sets, save_subdir, save_prefix)
+            if fig_type == "hist_2dscore_disagg":
+                save_subdir = (
+                    save_dir / args.net_mdl_subdir / args.n_z_subdir / args.po_subdir
+                )
+                make_hist_2dscore_disagg_fig(trial_sets, save_subdir, save_prefix)
 
 
 def kenya_randomization_plots(args):
-    output_dir = Path(args.output_dir) / args.exp_subdir / args.param_subdir
-    save_dir = Path(args.fig_dir) / args.exp_subdir / args.param_subdir
+    # check if any randomization plots are requested
+    if not any(
+        [
+            fig_type in args.fig_types
+            for fig_type in [
+                "scatter_error_vs_score",
+                "scatter_2dscore_disagg",
+                "scatter_ranks",
+                "hist_same_z_validity",
+                "hist_z",
+                "hist_z_uniqueness",
+                "hist_score",
+                "hist_2dscore_disagg",
+                "heat_adj_z",
+                "scatter_deg_z",
+                "scatter_y_z",
+            ]
+        ]
+    ):
+        return
 
-    for outcome_mdl_subdir in output_dir.glob(f"outcome-*"):
-        for net_mdl_subdir in outcome_mdl_subdir.glob(f"net-*"):
-            for n_z_subdir in net_mdl_subdir.glob(f"n-z-*"):
-                for rand_mdl_subdir in n_z_subdir.glob(f"rand-restricted_*"):
-                    print(rand_mdl_subdir.name)
-                    for include_settlement_cluster in [True, False]:
-                        trial_sets, fitness_fns = _kenya_trial_sets(
-                            n_z_subdir, rand_mdl_subdir, include_settlement_cluster
-                        )
+    output_dir = (
+        Path(args.output_dir)
+        / args.exp_subdir
+        / args.param_subdir
+        / args.net_mdl_subdir[0]
+        / args.po_mdl_subdir
+        / args.n_z_subdir
+    )
+    print(output_dir)
+    save_dir = Path(args.fig_dir) / args.exp_subdir
+    save_prefix = f"data-rep-{args.data_rep}_run-seed-{args.run_seed}"
 
-                        save_subdir = (
-                            save_dir
-                            / net_mdl_subdir.name
-                            / n_z_subdir.name
-                            / rand_mdl_subdir.name
-                            / f"settlement-cluster-{include_settlement_cluster}"
-                        )
-                        if not save_subdir.exists():
-                            save_subdir.mkdir(parents=True)
+    for rand_mdl_subdir in args.rand_mdl_subdirs:
+        print(f"\t{rand_mdl_subdir}")
+        trial_fname = f"data-rep-{args.data_rep}_run-seed-{args.run_seed}.pkl"
+        trial_path = output_dir / rand_mdl_subdir / trial_fname
 
-                        if "scatter_error_vs_score" in args.fig_types:
-                            scatter_error_vs_score.make_scatter_error_vs_score_fig(
-                                trial_sets, fitness_fns, save_subdir
-                            )
-                        if "scatter_2dscore_disagg" in args.fig_types:
-                            scatter_2dscore_disagg.make_scatter_2dscore_disagg_fig(
-                                trial_sets, args.axis_fns, save_subdir
-                            )
-                        if "hist_same_z_validity" in args.fig_types:
-                            hist_same_z_validity.make_hist_same_z_validity_fig(trial_sets, save_subdir)
+        if not trial_path.exists():
+            print(f"{trial_path} does not exist. Skipping...")
+            continue
 
-                        if "hist_z" in args.fig_types:
-                            hist_z.make_hist_z_fig(trial_sets, save_subdir)
-
-
-def _multarm_trial_sets(n_z_subdir, rand_mdl_subdir):
-    trial_sets = {}
-    fitness_fns = {}
-    for trial_fname in rand_mdl_subdir.glob("*.pkl"):
-        print(trial_fname)
-        trial_set = {}
-
-        # Load complete randomization results
-        cr_trial_fname = n_z_subdir / "rand-complete" / trial_fname.name
-        if cr_trial_fname.exists():
-            with open(cr_trial_fname, "rb") as f:
-                cr_trial = pickle.load(f)
-            cr_trial.loader = SimulatedTrialLoader(cr_trial.config)
-            cr_trial.mapping, cr_trial.use_cols = None, None
-            cr_trial.set_data_from_config()
-            cr_trial.set_design_from_config()
-            trial_set["complete"] = cr_trial
-
-        # Load quickblock randomization results
-        qb_trial_fname = n_z_subdir / "rand-quick-block" / trial_fname.name
-
-        if qb_trial_fname.exists():
-            with open(qb_trial_fname, "rb") as f:
-                qb_trial = pickle.load(f)
-            qb_trial.loader = SimulatedTrialLoader(qb_trial.config)
-            qb_trial.mapping, qb_trial.use_cols = None, None
-            qb_trial.set_data_from_config()
-            qb_trial.set_design_from_config()
-            trial_set["quick-block"] = qb_trial
-
-        # Load restricted randomization results
-        with open(trial_fname, "rb") as f:
-            trial = pickle.load(f)
-        trial.loader = SimulatedTrialLoader(trial.config)
-        trial.mapping, trial.use_cols = None, None
-        trial.set_data_from_config()
-        trial.set_design_from_config()
-        trial_set[trial.rand_mdl.name] = trial
-        fitness_fns[int(trial_fname.stem)] = trial.rand_mdl.fitness_fn
-
-        # Load restricted randomization with genetic search results
-        genetic_trial_fname = (
-            n_z_subdir
-            / f"rand-restricted-genetic_{trial.rand_mdl.fitness_fn.name}"
-            / trial_fname.name
+        trial_sets, fitness_fns = kenya_trial_set(
+            trial_path, args.include_settlement_cluster
         )
+        save_subdir = (
+            save_dir
+            / args.param_subdir
+            / args.net_mdl_subdir[0]
+            / args.po_mdl_subdir
+            / args.n_z_subdir
+            / rand_mdl_subdir
+        )
+        if not save_subdir.exists():
+            save_subdir.mkdir(parents=True)
 
-        if genetic_trial_fname.exists():
-            with open(genetic_trial_fname, "rb") as f:
-                genetic_trial = pickle.load(f)
-            genetic_trial.loader = SimulatedTrialLoader(genetic_trial.config)
-            genetic_trial.mapping, genetic_trial.use_cols = None, None
-            genetic_trial.set_data_from_config()
-            genetic_trial.set_design_from_config()
-            trial_set[genetic_trial.rand_mdl.name] = genetic_trial
+        for fig_type in args.fig_types:
+            if fig_type == "scatter_error_vs_score":
+                make_scatter_error_vs_score_fig(
+                    trial_sets, fitness_fns, save_subdir, save_prefix
+                )
 
-        trial_sets[int(trial_fname.stem)] = trial_set
+            if fig_type == "scatter_2dscore_disagg":
+                make_scatter_2dscore_disagg_fig(
+                    trial_sets, args.axis_fns, save_subdir, save_prefix
+                )
 
-    return trial_sets, fitness_fns
+            if fig_type == "scatter_ranks":
+                trial_sets_no_bench = {}
+                for data_rep, trial_dict in trial_sets.items():
+                    trial_sets_no_bench[data_rep] = {
+                        k: v
+                        for k, v in trial_dict.items()
+                        if "CBR" in k and "CBRg" not in k
+                    }
+                make_scatter_ranks_fig(
+                    trial_sets_no_bench, fitness_fns, save_subdir, save_prefix
+                )
+
+            if fig_type == "hist_same_z_validity":
+                make_hist_same_z_validity_fig(trial_sets, save_subdir, save_prefix)
+
+            if fig_type == "hist_z":
+                make_hist_z_fig(trial_sets, save_subdir, save_prefix)
+
+            if fig_type == "hist_score":
+                make_hist_score_fig(trial_sets, save_subdir, save_prefix)
+
+            if fig_type == "scatter_deg_z":
+                make_deg_z_fig(
+                    trial_sets, save_subdir, save_prefix, by_settlement=False
+                )
+                make_deg_z_fig(trial_sets, save_subdir, save_prefix, by_settlement=True)
+
+            if fig_type == "scatter_y_z":
+                make_y_z_fig(trial_sets, save_subdir, save_prefix, by_settlement=False)
+                make_y_z_fig(trial_sets, save_subdir, save_prefix, by_settlement=True)
+
+
+def kenya_data_plots(args):
+    # check if any data plots are requested
+    if not any(
+        [
+            fig_type in args.fig_types
+            for fig_type in [
+                "school_locs",
+                "y0_distr_across_sets",
+                "deg_distr_across_sets",
+                "adjacency",
+                "adj_v_dist",
+                "pairwise_dists",
+                "cos_sim_v_dist",
+                "scatter_deg_y",
+            ]
+        ]
+    ):
+        return
+
+    data_path = (
+        Path(args.data_dir)
+        / args.exp_subdir
+        / args.param_subdir
+        / args.net_mdl_subdir[0]
+        / args.po_mdl_subdir
+    )
+    print(data_path)
+    for data_fname in data_path.glob(f"*.pkl"):
+        print(f"\t{data_fname}")
+        with open(data_fname, "rb") as f:
+            data = pickle.load(f)
+            y0, _, X, X_school, _, A, sch_coords, _ = data
+        save_dir = (
+            Path(args.fig_dir)
+            / args.exp_subdir
+            / args.param_subdir
+            / args.net_mdl_subdir
+            / args.po_subdir
+            / data_fname.stem
+        )
+        if not save_dir.exists():
+            save_dir.mkdir(parents=True)
+
+        if "school_locs" in args.fig_types:
+            plot_kenya_school_locs(sch_coords, save_dir)
+
+        if "adjacency" in args.fig_types:
+            plot_kenya_adjacency(X, X_school, A, save_dir)
+
+        if "adj_v_dist" in args.fig_types:
+            plot_kenya_adj_v_dist(X, X_school, A, save_dir)
+
+        if "pairwise_dists" in args.fig_types:
+            plot_kenya_pairwise_dists(X_school, save_dir)
+
+        if "scatter_deg_y" in args.fig_types:
+            make_deg_y_fig(X, A, y0, save_dir, school_avg=False, by_settlement=False)
+            make_deg_y_fig(X, A, y0, save_dir, school_avg=False, by_settlement=True)
+
+        if "y0_distr_across_sets" in args.fig_types:
+            plot_y0_distr_across_sets(y0, X, save_dir)
+
+        if "deg_distr_across_sets" in args.fig_types:
+            plot_deg_distr_across_sets(X, X_school, A, save_dir)
 
 
 def multarm_randomization_plots(args):
-    output_dir = Path(args.output_dir) / args.exp_subdir
+    # check if any randomization plots are requested
+    if not any(
+        [
+            fig_type in args.fig_types
+            for fig_type in [
+                "scatter_error_vs_score",
+                "cov_pairwise_balance",
+                "cov_balance",
+                "cov_distr",
+                "hist_z_uniqueness",
+                "hist_score",
+            ]
+        ]
+    ):
+        return
+    output_dir = (
+        Path(args.output_dir)
+        / args.exp_subdir
+        / args.n_arm_subdir
+        / args.n_per_arm_subdir
+        / args.n_z_subdir
+    )
     save_dir = Path(args.fig_dir) / args.exp_subdir
+    save_prefix = f"data-rep-{args.data_rep}_run-seed-{args.run_seed}"
 
-    for n_arm_subdir in output_dir.glob("arms-*"):
-        for n_per_arm_subdir in n_arm_subdir.glob("n-per-arm-*"):
-            for n_z_subdir in n_per_arm_subdir.glob("n-z-*"):
-                data_rep_to_trials = {}
-                for rand_mdl_subdir in n_z_subdir.glob(f"rand-restricted_*"):
-                    trial_sets, fitness_fns = _multarm_trial_sets(
-                        n_z_subdir, rand_mdl_subdir
-                    )
+    for rand_mdl_subdir in args.rand_mdl_subdirs:
+        trial_path = output_dir / rand_mdl_subdir / f"{save_prefix}.pkl"
+        trial_set, fitness_fn = multarm_trial_set(trial_path)
 
-                    for data_rep in trial_sets.keys():
-                        if data_rep not in data_rep_to_trials:
-                            data_rep_to_trials[data_rep] = trial_sets[data_rep]
-                        else:
-                            data_rep_to_trials[data_rep].update(trial_sets[data_rep])
+        if "scatter_error_vs_score" in args.fig_types:
+            save_subdir = (
+                save_dir
+                / args.n_arm_subdir
+                / args.n_per_arm_subdir
+                / args.n_z_subdir
+                / rand_mdl_subdir
+            )
+            make_scatter_error_vs_score_fig(
+                trial_set, fitness_fn, save_subdir, save_prefix
+            )
+        if "hist_score" in args.fig_types:
+            save_subdir = (
+                save_dir
+                / args.n_arm_subdir
+                / args.n_per_arm_subdir
+                / args.n_z_subdir
+                / rand_mdl_subdir
+            )
+            make_hist_score_fig(trial_set, save_subdir, save_prefix)
 
-                    if "scatter_error_vs_score" in args.fig_types:
-                        save_subdir = (
-                            save_dir
-                            / n_arm_subdir.name
-                            / n_per_arm_subdir.name
-                            / n_z_subdir.name
-                            / rand_mdl_subdir.name
-                        )
-                        scatter_error_vs_score.make_scatter_error_vs_score_fig(
-                            trial_sets, fitness_fns, save_subdir
-                        )
-
-                save_subdir = (
-                    save_dir
-                    / n_arm_subdir.name
-                    / n_per_arm_subdir.name
-                    / n_z_subdir.name
-                )
-                if not save_subdir.exists():
-                    save_subdir.mkdir(parents=True)
-
-                if "cov_pairwise_balance" in args.fig_types:
-                    box_covariate_pairwise_balance.make_covariate_pairwise_balance_fig(
-                        data_rep_to_trials, args.balance_fn_name, save_subdir
-                    )
-                if "cov_balance" in args.fig_types:
-                    box_covariate_balance.make_covariate_balance_fig(
-                        data_rep_to_trials, args.balance_fn_name, save_subdir
-                    )
-                if "cov_distr" in args.fig_types:
-                    box_covariate_distr_per_arm.make_covariate_distr_per_arm_fig(data_rep_to_trials, save_subdir)
-
-def _composition_trial_sets(n_z_subdir, rand_mdl_subdir):
-    trial_sets = {}
-    fitness_fns = {}
-    for trial_fname in rand_mdl_subdir.glob("*.pkl"):
-        print(trial_fname)
-        trial_set = {}
-
-        # Load complete randomization results
-        cr_trial_fname = n_z_subdir / "rand-group-formation" / trial_fname.name
-
-        if cr_trial_fname.exists():
-            with open(cr_trial_fname, "rb") as f:
-                cr_trial = pickle.load(f)
-            cr_trial.loader = SimulatedTrialLoader(cr_trial.config)
-            cr_trial.set_data_from_config()
-            cr_trial.mapping = None 
-            cr_trial.set_design_from_config()
-            trial_set["group-formation"] = cr_trial
-
-        # Load restricted randomization results
-        with open(trial_fname, "rb") as f:
-            trial = pickle.load(f)
-        trial.loader = SimulatedTrialLoader(trial.config)
-        trial.set_data_from_config()
-        trial.mapping = None
-        trial.set_design_from_config()
-        trial_set[trial.rand_mdl.name] = trial
-        fitness_fns[int(trial_fname.stem)] = trial.rand_mdl.fitness_fn
-
-        # Load restricted randomization with genetic search results
-        genetic_trial_fname = (
-            n_z_subdir
-            / f"rand-restricted-genetic_{trial.rand_mdl.fitness_fn.name}"
-            / trial_fname.name
+        save_subdir = (
+            save_dir / args.n_arm_subdir / args.n_per_arm_subdir / args.n_z_subdir
         )
+        if not save_subdir.exists():
+            save_subdir.mkdir(parents=True)
 
-        if genetic_trial_fname.exists():
-            with open(genetic_trial_fname, "rb") as f:
-                genetic_trial = pickle.load(f)
-            genetic_trial.loader = SimulatedTrialLoader(genetic_trial.config)
-            genetic_trial.set_data_from_config()
-            genetic_trial.mapping = None
-            genetic_trial.set_design_from_config()
-            trial_set[genetic_trial.rand_mdl.name] = genetic_trial
+        if "cov_pairwise_balance" in args.fig_types:
+            make_covariate_pairwise_balance_fig(
+                trial_set, args.balance_fn_name, save_subdir, save_prefix
+            )
+        if "cov_balance" in args.fig_types:
+            make_covariate_balance_fig(
+                trial_set, args.balance_fn_name, save_subdir, save_prefix
+            )
+        if "cov_distr" in args.fig_types:
+            make_covariate_distr_per_arm_fig(trial_set, save_subdir, save_prefix)
 
-        trial_sets[int(trial_fname.stem)] = trial_set
-
-    return trial_sets, fitness_fns
 
 def composition_randomization_plots(args):
-    output_dir = Path(args.output_dir) / args.exp_subdir
+    # check if any randomization plots are requested
+    if not any(
+        [
+            fig_type in args.fig_types
+            for fig_type in [
+                "scatter_error_vs_score",
+                "cov_pairwise_balance",
+                "cov_balance",
+                "cov_distr",
+                "hist_score",
+                "hist_z_uniqueness",
+            ]
+        ]
+    ):
+        return
+
+    output_dir = (
+        Path(args.output_dir)
+        / args.exp_subdir
+        / args.p_ctxts_subdir
+        / args.n_per_arm_subdir
+        / args.n_z_subdir
+    )
     save_dir = Path(args.fig_dir) / args.exp_subdir
+    save_prefix = f"data-rep-{args.data_rep}_run-seed-{args.run_seed}"
 
-    for p_ctxts_subdir in output_dir.glob('p-comps-*'):
-        for n_per_arm_subdir in p_ctxts_subdir.glob('n-per-arm-*'):
-            for n_z_subdir in n_per_arm_subdir.glob('n-z-*'):
-                data_rep_to_trials = {}
-                for rand_mdl_subdir in n_z_subdir.glob(f"rand-*restricted_*"):
-                    trial_sets, fitness_fns = _composition_trial_sets(
-                        n_z_subdir, rand_mdl_subdir
-                    )
+    for rand_mdl_subdir in args.rand_mdl_subdirs:
+        trial_path = output_dir / rand_mdl_subdir / f"{save_prefix}.pkl"
+        trial_set, fitness_fn = composition_trial_set(trial_path)
 
-                    for data_rep in trial_sets.keys():
-                        if data_rep not in data_rep_to_trials:
-                            data_rep_to_trials[data_rep] = trial_sets[data_rep]
-                        else:
-                            data_rep_to_trials[data_rep].update(trial_sets[data_rep])
+        if "scatter_error_vs_score" in args.fig_types:
+            save_subdir = (
+                save_dir
+                / args.p_ctxts_subdir
+                / args.n_per_arm_subdir
+                / args.n_z_subdir
+                / rand_mdl_subdir
+            )
+            make_scatter_error_vs_score_fig(
+                trial_set, fitness_fn, save_subdir, save_prefix
+            )
+        if "hist_score" in args.fig_types:
+            save_subdir = (
+                save_dir
+                / args.p_ctxts_subdir
+                / args.n_per_arm_subdir
+                / args.n_z_subdir
+                / rand_mdl_subdir
+            )
+            make_hist_score_fig(trial_set, save_subdir, save_prefix)
 
-                    if "scatter_error_vs_score" in args.fig_types:
-                        save_subdir = (
-                            save_dir
-                            / p_ctxts_subdir.name
-                            / n_per_arm_subdir.name
-                            / n_z_subdir.name
-                            / rand_mdl_subdir.name
-                        )
-                        scatter_error_vs_score.make_scatter_error_vs_score_fig(
-                            trial_sets, fitness_fns, save_subdir
-                        )
+        save_subdir = (
+            save_dir / args.p_ctxts_subdir / args.n_per_arm_subdir / args.n_z_subdir
+        )
 
-                save_subdir = save_dir / p_ctxts_subdir.name / n_per_arm_subdir.name / n_z_subdir.name
-                if not save_subdir.exists():
-                    save_subdir.mkdir(parents=True)
-                    
-                if "cov_pairwise_balance" in args.fig_types:
-                    box_covariate_pairwise_balance.make_covariate_pairwise_balance_fig(data_rep_to_trials, args.balance_fn_name, save_subdir)
-                if "cov_balance" in args.fig_types:
-                    box_covariate_balance.make_covariate_balance_fig(data_rep_to_trials,  args.balance_fn_name, save_subdir)
-                if "cov_distr" in args.fig_types:
-                    box_covariate_distr_per_arm.make_covariate_distr_per_arm_fig(data_rep_to_trials, save_subdir)
+        if "cov_pairwise_balance" in args.fig_types:
+            make_covariate_pairwise_balance_fig(
+                trial_set, args.balance_fn_name, save_subdir, save_prefix
+            )
+        if "cov_balance" in args.fig_types:
+            make_covariate_balance_fig(
+                trial_set, args.balance_fn_name, save_subdir, save_prefix
+            )
+        if "cov_distr" in args.fig_types:
+            make_covariate_distr_per_arm_fig(trial_set, save_subdir, save_prefix)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=str, default="output")
     parser.add_argument("--exp-subdir", type=str, default="kenya")
-    parser.add_argument("--param-subdir", type=str, default="params_sigma_scale-1.0")
+    parser.add_argument("--data-dir", type=str, default="data")
+    parser.add_argument("--data-rep", type=int, default=0)
+    parser.add_argument("--run-seed", type=int, default=42)
+
+    parser.add_argument("--n-arm-subdir", type=str, default="arms-4")
+    parser.add_argument("--n-per-arm-subdir", type=str, default="n-per-arm-20")
+    parser.add_argument("--balance-fn-name", type=str, default="signed-max-abs-smd")
+    parser.add_argument("--pairwise-balance-fn-name", type=str, default="smd")
+
+    parser.add_argument("--p-ctxts-subdir", type=str, default="p-comps-[0.5, 0.3, 0.7]")
+
+    parser.add_argument("--include-settlement-cluster", action="store_true")
+    parser.add_argument(
+        "--param-subdir", type=str, default="ki-mu-pos_ko-da-pos_sd-sm_bal"
+    )
+    parser.add_argument(
+        "--net-mdl-subdir",
+        nargs="+",
+        type=str,
+        default=[
+            "net-nested-2lvl-sb_psi-0.20_pdiso-0.02_pdido-0.01_intxn-euclidean-dist-power-decay-gamma-0.5"
+        ],
+    )
+    parser.add_argument(
+        "--po-mdl-subdir",
+        type=str,
+        default="kenya-hierarchical-nbr-sum",
+    )
+    parser.add_argument("--n-z-subdir", type=str, default="n-z-100000_n-cutoff-500")
+    parser.add_argument(
+        "--rand-mdl-subdirs",
+        nargs="+",
+        default=[
+            "rand-restricted_min-pairwise-euclidean-dist_cluster-school",
+            "rand-restricted_frac-exposed_cluster-school",
+            "rand-restricted_max-mahalanobis_cluster-school",
+            "rand-restricted_lin-comb_max-mahalanobis-0.50_min-pairwise-euclidean-dist-0.50_cluster-school",
+            "rand-restricted_lin-comb_max-mahalanobis-0.50_frac-exposed-0.50_cluster-school",
+            "rand-restricted_lin-comb_max-mahalanobis-0.75_min-pairwise-euclidean-dist-0.25_cluster-school",
+            "rand-restricted_lin-comb_max-mahalanobis-0.75_frac-exposed-0.25_cluster-school",
+            "rand-restricted_lin-comb_max-mahalanobis-0.25_min-pairwise-euclidean-dist-0.75_cluster-school",
+            "rand-restricted_lin-comb_max-mahalanobis-0.25_frac-exposed-0.75_cluster-school",
+        ],
+    )
 
     parser.add_argument("--fig-types", nargs="+", type=str)
-    parser.add_argument("--axis-fns", nargs="+", type=str)
-    parser.add_argument("--balance-fn-name", type=str)
-
+    parser.add_argument(
+        "--axis-fns", nargs="+", type=str, default=["max-mahalanobis", "frac-expo"]
+    )
     parser.add_argument("--fig-dir", type=str, default="figs")
-    
 
     args = parser.parse_args()
 
     if args.exp_subdir == "kenya":
         kenya_randomization_plots(args)
+        kenya_data_plots(args)
     if "mult-arm" in args.exp_subdir:
         multarm_randomization_plots(args)
-    if args.exp_subdir == 'composition':
+    if args.exp_subdir == "composition":
         composition_randomization_plots(args)
+    if args.exp_subdir == "network":
+        network_randomization_plots(args)

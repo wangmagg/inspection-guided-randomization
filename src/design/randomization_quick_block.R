@@ -52,10 +52,11 @@ sample_mult_z <- function(
         min_block_size <- min_block_factor * n_arms
 
         # Compute distances between units
-        dist <- distances::distances(data)
+        dist <- distances::distances(data, normalize='studentize')
 
         # Sample a pool of treatment allocations
         qb_blocks <- quickblock(dist, size_constraint = min_block_size)
+
         z_pool <- do.call(
             cbind,
             replicate(n_cutoff,
@@ -68,7 +69,6 @@ sample_mult_z <- function(
         z_pool <- z_pool - 1
 
         # Save treatment allocations to file
-        save_fname <- sprintf("%d.csv", data_rep - 1)
         n_arms_subdir <- sprintf("arms-%d", n_arms)
         n_per_arm_subdir <- sprintf("n-per-arm-%d", n_per_arm)
         n_cutoff_subdir <- sprintf("n-cutoff-%d", n_cutoff)
@@ -78,11 +78,15 @@ sample_mult_z <- function(
             qb_dir, n_arms_subdir, n_per_arm_subdir,
             n_cutoff_subdir, minblock_subdir
         )
-
+        
         if (!dir.exists(save_dir)) {
             dir.create(save_dir, recursive = TRUE)
         }
+        save_fname <- sprintf("%d.csv", data_rep - 1)
+        save_blocks_fname <- sprintf("%d-blocks.csv", data_rep - 1)
+
         write.csv(z_pool, file.path(save_dir, save_fname), row.names = FALSE)
+        write.csv(qb_blocks, file.path(save_dir, save_blocks_fname), row.names = FALSE)
     }
 }
 

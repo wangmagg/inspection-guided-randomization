@@ -9,14 +9,17 @@
 __pycache__/
 lib/
 
+# Testing
+notebooks/
+
 # Outputs
 data/
 output/
 res/
 figs/
+manu_figs/
 
 # Project-specific
 _extras/
 scripts/run_multarm_imbalance_sims.sh
 scripts/run_multarm_imbalance_visualization.sh
-

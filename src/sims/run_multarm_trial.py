@@ -1,7 +1,8 @@
+from itertools import combinations
+import numpy as np
+import pandas as pd
 from pathlib import Path
 import pickle
-import pandas as pd
-import numpy as np
 
 from src.sims.trial import SimulatedTrial, SimulatedTrialConfig
 from typing import List, Optional
@@ -13,7 +14,8 @@ class MultiArmTrialConfig(SimulatedTrialConfig):
     def __init__(self):
         super().__init__()
 
-        self.add_argument('--exp-dir', type=str, default='mult-arm')
+        self.add_argument("--data-subdir", type=str, default="mult-arm")
+        self.add_argument("--output-subdir", type=str, default="mult-arm")
         
         self.add_argument('--potential-outcome-mdl-name', type=str, default='classroom')
         self.add_argument('--n-per-arm', type=int, default=20)
@@ -22,17 +24,20 @@ class MultiArmTrialConfig(SimulatedTrialConfig):
         self.add_argument('--observed-outcome-mdl-name', type=str, default='consistent')
         
         self.add_argument('--rand-mdl-name', type=str, default='complete')
-        self.add_argument('--n-z', type=int, default=int(1e5))
+        self.add_argument('--n-z', type=int, default=None)
         self.add_argument('--n-cutoff', type=int, default=500)
+        self.add_argument("--add-all-mirrors", type=bool, default=True)
+        self.add_argument("--n-batches", type=int, default=None)
         self.add_argument('--fitness-fn-name', type=str, default=None)
         self.add_argument('--fitness-fn-weights', type=float, nargs='+', default=None)
-        self.add_argument('--name-covar-to-weight', type=str, default='male')
+        self.add_argument('--name-covar-to-weight', type=str, default=None)
 
         self.add_argument('--tourn-size', type=int, default=2)
         self.add_argument('--cross-k', type=int, default=2)
         self.add_argument('--cross-rate', type=float, default=0.95)
         self.add_argument('--mut-rate', type=float, default=0.01)
         self.add_argument('--genetic-iters', type=int, default=3)
+        self.add_argument('--eps', type=float, default=0.05)
 
         self.add_argument('--qb-dir', type=str, default='data/mult-arm/qb')
         self.add_argument('--min-block-factor', type=int, default=2)
@@ -51,7 +56,6 @@ class SimulatedMultiArmTrial(SimulatedTrial):
     def __init__(self, trial_config: MultiArmTrialConfig):
         super().__init__(trial_config)
         self.config.n = config.n_arms * config.n_per_arm 
-        self.arm_pairs = None
         
         # Set treatment effects for each arm
         if self.config.n_arms == 3:
@@ -64,7 +68,12 @@ class SimulatedMultiArmTrial(SimulatedTrial):
             n_large = self.config.n_arms // 4
             n_0 = self.config.n_arms - n_small - n_mod - n_large - 1
             self.config.tau_sizes = [0] * n_0 + [0.1] * n_small + [0.3] * n_mod + [0.6] * n_large
-    
+        
+        if self.config.fitness_fn_name == "weighted-sum-abs-smd":
+            self.arm_compare_pairs = np.array(list(combinations(range(self.config.n_arms), 2)))
+        else:
+            self.arm_compare_pairs = np.vstack((np.zeros(self.config.n_arms-1, dtype=int), 
+                                                np.arange(1, self.config.n_arms, dtype=int))).transpose()    
     def _generate_data(self):
         """
         Generate data (covariates and potential outcomes) for trial
@@ -108,12 +117,11 @@ class SimulatedMultiArmTrial(SimulatedTrial):
         top_dir = Path(top_dir)
         save_arms_subdir = f"arms-{self.config.n_arms}"
         save_n_per_arm_subdir = f"n-per-arm-{self.config.n_per_arm}"
-        save_fname = f"{self.config.rep_to_run}.pkl"
 
         if inner_dirs is None:
-            return top_dir / save_arms_subdir / save_n_per_arm_subdir / save_fname
+            return top_dir / save_arms_subdir / save_n_per_arm_subdir
         else:
-            return top_dir / save_arms_subdir / save_n_per_arm_subdir / inner_dirs / save_fname
+            return top_dir / save_arms_subdir / save_n_per_arm_subdir / inner_dirs
     
     @property
     def covar_to_weight(self):
@@ -121,25 +129,32 @@ class SimulatedMultiArmTrial(SimulatedTrial):
         Index of covariate to weight in fitness function
         Only used in weighted SumMaxSMD
         """
-        return np.where(self.X.columns == self.config.name_covar_to_weight)[0][0]
+        if self.config.name_covar_to_weight is None:
+            return None
+        else:
+            return np.where(self.X.columns == self.config.name_covar_to_weight)[0][0]
     
     @property
     def data_path(self):
         """
         Path for saving trial data
         """
-        data_dir = Path(self.config.data_dir) / self.config.exp_dir
-        return self._path(data_dir)
+        data_dir = Path(self.config.data_dir) / self.config.data_subdir
+        return self._path(data_dir) / f"{self.config.rep_to_run}.pkl"
     
     @property
     def pickle_path(self):
         """
         Path for saving trial object 
         """
-        save_dir = Path(self.config.out_dir) / self.config.exp_dir
+        save_dir = Path(self.config.out_dir) / self.config.output_subdir
         save_n_z_subdir = f"n-z-{self.config.n_z}"
         save_rand_mdl_subdir = f"rand-{self.rand_mdl.name}"
-        return self._path(save_dir, f"{save_n_z_subdir}/{save_rand_mdl_subdir}")
+
+        if self.config.n_z is None:
+            return self._path(save_dir, save_rand_mdl_subdir)
+        else:
+            return self._path(save_dir, f"{save_n_z_subdir}/{save_rand_mdl_subdir}/data-rep-{self.config.rep_to_run}_run-seed-{self.config.seed}.pkl")
     
     def _set_attributes_from_data(self, data):
         """

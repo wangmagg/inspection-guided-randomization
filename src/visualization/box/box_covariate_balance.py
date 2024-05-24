@@ -1,19 +1,21 @@
 from matplotlib import pyplot as plt
-import seaborn as sns
-
-import numpy as np
 import pandas as pd
 from pathlib import Path
-
-from src.sims.trial import SimulatedTrial
+import seaborn as sns
 from typing import Dict
+
+from src.sims import trial_loader
+from src.sims.trial import SimulatedTrial
+from src.visualization.utils.aes import get_hue_order, get_palette
+
 
 def _plot_covariate_balance_fig(
     data_rep_balance_df: pd.DataFrame, 
     balance_fn_name: str, 
     save_dir: Path, 
-    save_prefix: str
-):
+    save_prefix: str,
+    legend: bool = True
+) -> None:
     """
     Helper function to make boxplot of global covariate balance across all arms
     for each covariate and randomization design
@@ -28,51 +30,60 @@ def _plot_covariate_balance_fig(
 
     # Melt data into long form
     data_rep_balance_df_long = data_rep_balance_df.melt(
-        id_vars=["data_rep", "rand_mdl"],
+        id_vars=["rand_mdl"],
         var_name="covariate",
         value_name=balance_fn_name,
     )
 
+    # Capitalize covariate names
+    data_rep_balance_df_long["covariate"] = data_rep_balance_df_long["covariate"].str.capitalize()
+
     # Make box plot
-    hue_order = np.sort(data_rep_balance_df["rand_mdl"].unique())
+    hue_order = get_hue_order(data_rep_balance_df_long["rand_mdl"].unique())
+    palette = get_palette(data_rep_balance_df_long["rand_mdl"].unique())
     sns.boxplot(
         data=data_rep_balance_df_long,
         x="covariate",
         y=balance_fn_name,
         hue="rand_mdl",
         hue_order=hue_order,
+        palette=palette,
         ax=ax,
     )
-
-    legend = ax.legend_
-    handles = legend.legend_handles
-    labels = [t.get_text() for t in legend.get_texts()]
-    ax.legend(
-        handles=handles,
-        labels=labels,
-        title="Design",
-        fontsize=18,
-        title_fontsize=20,
-        bbox_to_anchor=(0.5, -0.5),
-        loc="lower center",
-        ncol=len(hue_order) // 2
-    )
+    if legend:
+        legend = ax.legend_
+        handles = legend.legend_handles
+        labels = [t.get_text() for t in legend.get_texts()]
+        ax.legend(
+            handles=handles,
+            labels=labels,
+            title=None,
+            fontsize=18,
+            bbox_to_anchor=(0.5, -0.5),
+            loc="lower center",
+            ncol=len(hue_order) // 2,
+            edgecolor='black'
+        )
+    else:
+        ax.get_legend().remove()
     ax.axhline(0, color="black", linestyle="--")
-    ax.set_xlabel("Covariate", fontsize=20)
-    ax.set_ylabel(f"{balance_fn_name}", fontsize=20)
-    ax.tick_params(axis='x', labelsize=16)
-    ax.tick_params(axis='y', labelsize=16)
+    ax.set_xlabel("Covariate", fontsize=22)
+    ax.set_ylabel(f"{balance_fn_name}", fontsize=22)
+    ax.tick_params(axis='x', labelsize=18)
+    ax.tick_params(axis='y', labelsize=18)
     
     # Save figure
-    save_fname = f"{save_prefix}_{balance_fn_name}_covariate_balance.png"
+    save_fname = f"{save_prefix}_{balance_fn_name}_covariate_balance.svg"
     save_path = save_dir / save_fname
-    fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    fig.savefig(save_path, dpi=300, bbox_inches="tight", transparent=True)
     plt.close()
 
 
-def make_covariate_balance_fig(data_rep_to_trials_dict: Dict[str, Dict[str, SimulatedTrial]],
+def make_covariate_balance_fig(trial_set: Dict[str, SimulatedTrial],
                                balance_fn_name: str, 
-                               fig_dir: Path):
+                               fig_dir: Path,
+                               save_prefix: str,
+                               legend: bool = True) -> None:
     """
     Make boxplot of global covariate balance across all arms for each covariate,
     with a separate figure for each data replicate 
@@ -82,34 +93,20 @@ def make_covariate_balance_fig(data_rep_to_trials_dict: Dict[str, Dict[str, Simu
         - balance_fn_name: name of balance function
         - fig_dir: directory to save figure
     """
-    plt.rcParams["text.usetex"] = True
-    all_balance_df_list = []
 
-    # Iterate through data replicates 
-    for data_rep, rand_mdl_to_trial_dict in data_rep_to_trials_dict.items():
-        data_rep_balance_df_list = []
-        for rand_mdl, trial in rand_mdl_to_trial_dict.items():
-            trial.loader.config.fitness_fn_name = balance_fn_name
-            balance_fn = trial.loader.get_fitness_fn(trial)
-            balance_scores = balance_fn(trial.z_pool)
-            balance_df = pd.DataFrame(balance_scores, columns=trial.X_fit.columns)
-            balance_df["data_rep"] = data_rep
-            balance_df["rand_mdl"] = rand_mdl
-            data_rep_balance_df_list.append(balance_df)
+    data_rep_balance_df_list = []
+    for rand_mdl, trial in trial_set.items():
+        trial.config.fitness_fn_name = balance_fn_name
+        balance_fn = trial_loader.get_fitness_fn(trial)
+        balance_scores = balance_fn(trial.z_pool)
+        balance_df = pd.DataFrame(balance_scores, columns=trial.X_fit.columns)
+        balance_df["rand_mdl"] = rand_mdl
+        data_rep_balance_df_list.append(balance_df)
 
-        # Make boxplot
-        data_rep_balance_df = pd.concat(data_rep_balance_df_list)
-        _plot_covariate_balance_fig(
-            data_rep_balance_df, balance_fn_name, fig_dir, data_rep
-        )
-
-        all_balance_df_list.extend(data_rep_balance_df_list)
-
-    # Make boxplot combining all data replicates
-    all_balance_df = pd.concat(all_balance_df_list)
-    data_rep_str = "-".join(
-        [str(data_rep) for data_rep in range(len(data_rep_to_trials_dict))]
+    # Make boxplot
+    data_rep_balance_df = pd.concat(data_rep_balance_df_list)
+    _plot_covariate_balance_fig(
+        data_rep_balance_df, balance_fn.plotting_name, fig_dir, save_prefix, legend
     )
-    _plot_covariate_balance_fig(all_balance_df, balance_fn_name, fig_dir, data_rep_str)
 
     return
