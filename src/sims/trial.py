@@ -4,7 +4,7 @@ from argparse import ArgumentParser, Namespace
 from abc import ABC, abstractmethod
 from pathlib import Path
 import pickle
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, dump, load
 
 from src.models.exposure_models import *
 from src.models.outcome_models import *
@@ -192,7 +192,20 @@ class SimulatedTrial(ABC):
         """
         Do estimation and inference on trial
         """
+        tmp_memmap_dir = Path(self.config.out_dir) / "tmp_memmap"
+        if not tmp_memmap_dir.exists():
+            tmp_memmap_dir.mkdir(parents=True, exist_ok=True)
+        
         estimator, p_val_fn = trial_loader.get_estimator(self)
+
+        z_pool_fname_memmap = tmp_memmap_dir / "z_pool"
+        y_obs_pool_fname_memmap = tmp_memmap_dir / "y_obs_pool"
+
+        dump(self.z_pool, z_pool_fname_memmap)
+        dump(self.y_obs_pool, y_obs_pool_fname_memmap)
+
+        self.z_pool = load(z_pool_fname_memmap, mmap_mode="r")
+        self.y_obs_pool = load(y_obs_pool_fname_memmap, mmap_mode="r")
 
         print("Getting treatment effect estimates")
         tau_hat_pool = Parallel(n_jobs=4, max_nbytes=int(1e6))(
