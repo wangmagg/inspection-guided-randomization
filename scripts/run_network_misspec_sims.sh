@@ -43,7 +43,7 @@ do
         done
     done
 
-    python3 -m src.sims.collect_network_results --output-subdir network-misspec
+    python3 -m src.sims.collect_results_network --output-subdir network-misspec
 
 done
 

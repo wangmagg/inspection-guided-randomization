@@ -195,14 +195,14 @@ class SimulatedTrial(ABC):
         estimator, p_val_fn = trial_loader.get_estimator(self)
 
         print("Getting treatment effect estimates")
-        tau_hat_pool = Parallel(n_jobs=-2)(
+        tau_hat_pool = Parallel(n_jobs=4, max_nbytes=int(1e6))(
             delayed(estimator)(z, y_obs) for z, y_obs in tqdm(
                 zip(self.z_pool, self.y_obs_pool), total=self.z_pool.shape[0]
             )
         )
 
         print("Getting p-values")
-        pvals = Parallel(n_jobs=-2)(
+        pvals = Parallel(n_jobs=4, max_nbytes=int(1e6))(
             delayed(p_val_fn)(z_pool=self.z_pool, y_obs_pool=self.y_obs_pool, idx=idx)
             for idx in tqdm(range(self.z_pool.shape[0]))
         )

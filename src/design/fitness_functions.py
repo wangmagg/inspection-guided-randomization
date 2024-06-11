@@ -525,7 +525,7 @@ class MaxMahalanobis(Fitness):
             return max_dist
 
         time_start = time.time()
-        scores = Parallel(n_jobs=-2)(
+        scores = Parallel(n_jobs=2, max_nbytes=int(1e6))(
             delayed(_single_z)(z, self.X, self.arm_compare_pairs) for z in z_pool
         )
         scores = np.array(scores)

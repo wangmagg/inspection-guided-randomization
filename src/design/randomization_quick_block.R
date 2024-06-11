@@ -90,7 +90,7 @@ sample_mult_z <- function(
     }
 }
 
-setwd("/Users/maggiewang/Documents/stanford/repos/cbr")
+setwd("/Users/maggiewang/Documents/stanford/repos/igr")
 
 # Define command line arguments
 option_list <- list(

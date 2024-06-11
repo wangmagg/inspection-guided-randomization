@@ -71,5 +71,5 @@ do
                 --n-cutoff $cutoff
         done
     done
-    python3 -m src.sims.collect_results_kenya --exp-subdir kenya-cutoff
+    python3 -m src.sims.collect_results_kenya --exp-subdir kenya
 done
