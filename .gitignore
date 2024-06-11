@@ -23,3 +23,5 @@ manu_figs/
 _extras/
 scripts/run_multarm_imbalance_sims.sh
 scripts/run_multarm_imbalance_visualization.sh
+scripts/sherlock*
+igr-env
