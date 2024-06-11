@@ -19,18 +19,13 @@ def crossover(
     for _ in range(cross_k):
         cross_loc = rng.integers(len(z_par1))
 
-        for _ in range(cross_k):
-            cross_loc = rng.integers(len(z_par1))
-            z_par1[cross_loc:], z_par2[cross_loc:] = z_par2[cross_loc:], z_par1[cross_loc:]
-        return z_par1, z_par2
+        # get right-hand side of crossover point in both parents
+        z_par1_rhs = np.copy(z_par1[cross_loc:])
+        z_par2_rhs = np.copy(z_par2[cross_loc:])
 
-        # # get right-hand side of crossover point in both parents
-        # z_par1_rhs = np.copy(z_par1[cross_loc:])
-        # z_par2_rhs = np.copy(z_par2[cross_loc:])
-
-        # # swap right-hand sides
-        # z_par1[cross_loc:] = z_par2_rhs
-        # z_par2[cross_loc:] = z_par1_rhs
+        # swap right-hand sides
+        z_par1[cross_loc:] = z_par2_rhs
+        z_par2[cross_loc:] = z_par1_rhs
 
     return z_par1, z_par2
 
