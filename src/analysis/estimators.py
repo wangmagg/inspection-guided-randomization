@@ -20,7 +20,7 @@ def diff_in_means(z, y_obs):
         mean_1 = xp.matmul(z, y_obs) / xp.sum(z_2d, axis=1)
         mean_0 = xp.matmul(1 - z, y_obs) / xp.sum(z_comp_2d, axis=1)
 
-    tau_hat = xp.squeeze(mean_1 - mean_0)
+    tau_hat = xp.squeeze(mean_1 - mean_0)[()]
 
     return tau_hat
 
