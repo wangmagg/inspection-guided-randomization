@@ -213,8 +213,8 @@ class SimulatedTrial(ABC):
 
 
         if USE_GPU:
-            self.z_pool = cp.asarray(self.z_pool)
-            self.y_obs_pool = cp.asarray(self.y_obs_pool)
+            self.z_pool = cp.array(self.z_pool)
+            self.y_obs_pool = cp.array(self.y_obs_pool)
 
             tau_hat_pool = [
                 estimator(z, y_obs) for z, y_obs in tqdm(zip(self.z_pool, self.y_obs_pool), total=self.z_pool.shape[0])
