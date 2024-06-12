@@ -428,7 +428,8 @@ class MaxMahalanobis(Fitness):
         self.mapping = mapping
 
         if USE_GPU:
-            xp = cp.get_array_module(self.X)
+            X = cp.asarray(X)
+            xp = cp
         else:
             xp = np
 
@@ -461,7 +462,7 @@ class MaxMahalanobis(Fitness):
         # calculate mean of each covariate for each arm
         arm_means = np.zeros((n_arms, self.X.shape[1]))
         for arm in range(n_arms):
-            arm_means[arm, :] = xp.mean(self.X[z == arm, :], axis=0)
+            arm_means[arm, :] = np.mean(self.X[z == arm, :], axis=0)
 
         return arm_means
 
@@ -505,24 +506,19 @@ class MaxMahalanobis(Fitness):
             z_pool = np.vstack([z[self.mapping] for z in z_pool])
 
         def _single_z(z, X, arm_compare_pairs):
-            if USE_GPU:
-                xp = cp.get_array_module(self.X)
-            else:
-                xp = np
-
-            n_arms = int(xp.max(z) + 1)
+            n_arms = int(np.max(z) + 1)
 
             # calculate mean of each covariate for each arm
-            arm_means = xp.zeros((n_arms, X.shape[1]))
+            arm_means = np.zeros((n_arms, X.shape[1]))
             for arm in range(n_arms):
-                arm_means[arm, :] = xp.mean(X[z == arm, :], axis=0)
+                arm_means[arm, :] = np.mean(X[z == arm, :], axis=0)
 
             if arm_compare_pairs is None:
-                arm_compare_pairs = xp.array(
+                arm_compare_pairs = np.array(
                     list(combinations(range(arm_means.shape[0]), 2))
                 )
-            if xp.ndim(arm_compare_pairs) == 1:
-                arm_compare_pairs = xp.expand_dims(arm_compare_pairs, axis=0)
+            if np.ndim(arm_compare_pairs) == 1:
+                arm_compare_pairs = np.expand_dims(arm_compare_pairs, axis=0)
 
             dists = [
                 mahalanobis(arm_means[p[0], :], arm_means[p[1], :], self.S_hat_inv)

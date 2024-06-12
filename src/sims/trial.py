@@ -153,11 +153,13 @@ class SimulatedTrial(ABC):
 
         if isinstance(X_subset, pd.DataFrame):
             X_subset = X_subset.to_numpy()
+
+        return X_subset
         
-        if USE_GPU:
-            return cp.asarray(X_subset)
-        else:
-            return X_subset
+        # if USE_GPU:
+        #     return cp.asarray(X_subset)
+        # else:
+        #     return X_subset
 
     def set_data_from_config(self):
         """
