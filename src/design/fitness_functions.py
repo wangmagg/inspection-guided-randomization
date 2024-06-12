@@ -434,9 +434,9 @@ class MaxMahalanobis(Fitness):
             xp = np
 
         # calculate sample covariance matrix
-        x_bar = xp.expand_dims(xp.mean(self.X, axis=0), 1)
-        N = self.X.shape[0]
-        S_hat = 1 / (N - 1) * xp.matmul(self.X.T - x_bar, (self.X.T - x_bar).T)
+        x_bar = xp.expand_dims(xp.mean(X, axis=0), 1)
+        N = X.shape[0]
+        S_hat = 1 / (N - 1) * xp.matmul(X.T - x_bar, (X.T - x_bar).T)
         s, u = xp.linalg.eigh(S_hat)
         self.S_hat_inv = u @ (1 / s[..., None] * u.T)
 
