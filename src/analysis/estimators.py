@@ -9,29 +9,22 @@ except ModuleNotFoundError:
 
 def diff_in_means(z, y_obs):
     if USE_GPU:
-        z = cp.array(z)
-        y_obs = cp.array(y_obs)
-        mean_1 = cp.diag(cp.matmul(z, cp.transpose(y_obs))) / cp.sum(
-            cp.atleast_2d(z), axis=1
-        )
-        mean_0 = cp.diag(cp.matmul(1 - z, cp.transpose(y_obs))) / cp.sum(
-            cp.atleast_2d(1 - z), axis=1
-        )
-        return cp.squeeze(mean_1 - mean_0).get()[()]
-    
+        xp = cp.get_array_module(z)
     else:
-        if y_obs.ndim > 1:
-            mean_1 = np.diag(np.matmul(z, np.transpose(y_obs))) / np.sum(
-                np.atleast_2d(z), axis=1
-            )
-            mean_0 = np.diag(np.matmul(1 - z, np.transpose(y_obs))) / np.sum(
-                np.atleast_2d(1 - z), axis=1
-            )
-        else:
-            mean_1 = np.matmul(z, y_obs) / np.sum(np.atleast_2d(z), axis=1)
-            mean_0 = np.matmul(1 - z, y_obs) / np.sum(np.atleast_2d(1 - z), axis=1)
+        xp = np
+       
+    if y_obs.ndim > 1:
+        mean_1 = xp.diag(xp.matmul(z, xp.transpose(y_obs))) / xp.sum(
+            xp.atleast_2d(z), axis=1
+        )
+        mean_0 = xp.diag(xp.matmul(1 - z, xp.transpose(y_obs))) / xp.sum(
+            xp.atleast_2d(1 - z), axis=1
+        )
+    else:
+        mean_1 = xp.matmul(z, y_obs) / xp.sum(xp.atleast_2d(z), axis=1)
+        mean_0 = xp.matmul(1 - z, y_obs) / xp.sum(xp.atleast_2d(1 - z), axis=1)
 
-        return np.squeeze(mean_1 - mean_0)[()]
+    return xp.squeeze(mean_1 - mean_0)[()]
 
 
 def diff_in_means_mult_arm(z, y_obs, n_arms, arm_compare_pairs=None):

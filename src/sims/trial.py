@@ -17,6 +17,11 @@ from src.design.randomization_designs import *
 from src.analysis.estimators import *
 from src.sims import trial_loader
 
+try:
+    import cupy as cp
+    USE_GPU = True
+except ModuleNotFoundError:
+    USE_GPU=False
 
 class SimulatedTrialConfig(ArgumentParser):
     """
@@ -192,20 +197,23 @@ class SimulatedTrial(ABC):
         """
         Do estimation and inference on trial
         """
-        tmp_memmap_dir = Path(self.config.out_dir) / "tmp_memmap"
-        if not tmp_memmap_dir.exists():
-            tmp_memmap_dir.mkdir(parents=True, exist_ok=True)
+        # tmp_memmap_dir = Path(self.config.out_dir) / "tmp_memmap"
+        # if not tmp_memmap_dir.exists():
+        #     tmp_memmap_dir.mkdir(parents=True, exist_ok=True)
         
         estimator, p_val_fn = trial_loader.get_estimator(self)
 
-        z_pool_fname_memmap = tmp_memmap_dir / "z_pool"
-        y_obs_pool_fname_memmap = tmp_memmap_dir / "y_obs_pool"
+        # z_pool_fname_memmap = tmp_memmap_dir / "z_pool"
+        # y_obs_pool_fname_memmap = tmp_memmap_dir / "y_obs_pool"
 
-        dump(self.z_pool, z_pool_fname_memmap)
-        dump(self.y_obs_pool, y_obs_pool_fname_memmap)
+        # dump(self.z_pool, z_pool_fname_memmap)
+        # dump(self.y_obs_pool, y_obs_pool_fname_memmap)
 
-        self.z_pool = load(z_pool_fname_memmap, mmap_mode="r")
-        self.y_obs_pool = load(y_obs_pool_fname_memmap, mmap_mode="r")
+        # self.z_pool = load(z_pool_fname_memmap, mmap_mode="r")
+        # self.y_obs_pool = load(y_obs_pool_fname_memmap, mmap_mode="r")
+        if USE_GPU:
+            self.z_pool = cp.asarray(self.z_pool)
+            self.y_obs_pool = cp.asarray(self.y_obs_pool)
 
         print("Getting treatment effect estimates")
         tau_hat_pool = Parallel(n_jobs=4, max_nbytes=int(1e6))(
