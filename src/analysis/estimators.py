@@ -1,20 +1,37 @@
 import numpy as np
 from abc import ABC, abstractmethod
 
+try:
+    import cupy as cp
+    USE_GPU=True
+except ModuleNotFoundError:
+    USE_GPU=False
 
 def diff_in_means(z, y_obs):
-    if y_obs.ndim > 1:
-        mean_1 = np.diag(np.matmul(z, np.transpose(y_obs))) / np.sum(
-            np.atleast_2d(z), axis=1
+    if USE_GPU:
+        z = cp.array(z)
+        y_obs = cp.array(y_obs)
+        mean_1 = cp.diag(cp.matmul(z, cp.transpose(y_obs))) / cp.sum(
+            cp.atleast_2d(z), axis=1
         )
-        mean_0 = np.diag(np.matmul(1 - z, np.transpose(y_obs))) / np.sum(
-            np.atleast_2d(1 - z), axis=1
+        mean_0 = cp.diag(cp.matmul(1 - z, cp.transpose(y_obs))) / cp.sum(
+            cp.atleast_2d(1 - z), axis=1
         )
+        return cp.squeeze(mean_1 - mean_0).get()[()]
+    
     else:
-        mean_1 = np.matmul(z, y_obs) / np.sum(np.atleast_2d(z), axis=1)
-        mean_0 = np.matmul(1 - z, y_obs) / np.sum(np.atleast_2d(1 - z), axis=1)
+        if y_obs.ndim > 1:
+            mean_1 = np.diag(np.matmul(z, np.transpose(y_obs))) / np.sum(
+                np.atleast_2d(z), axis=1
+            )
+            mean_0 = np.diag(np.matmul(1 - z, np.transpose(y_obs))) / np.sum(
+                np.atleast_2d(1 - z), axis=1
+            )
+        else:
+            mean_1 = np.matmul(z, y_obs) / np.sum(np.atleast_2d(z), axis=1)
+            mean_0 = np.matmul(1 - z, y_obs) / np.sum(np.atleast_2d(1 - z), axis=1)
 
-    return np.squeeze(mean_1 - mean_0)[()]
+        return np.squeeze(mean_1 - mean_0)[()]
 
 
 def diff_in_means_mult_arm(z, y_obs, n_arms, arm_compare_pairs=None):
