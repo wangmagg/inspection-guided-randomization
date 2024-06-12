@@ -83,157 +83,6 @@ then
 
                         for rand_mdl_name in "${rand_mdl_name_arr[@]}"
                         do 
-                            # add all mirror allocations
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name lin-comb_max-mahalanobis_frac-expo \
-                                --fitness-fn-weights 0.5 0.5
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name frac-expo 
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name lin-comb_max-mahalanobis_frac-expo \
-                                --fitness-fn-weights 0.25 0.75
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name lin-comb_max-mahalanobis_frac-expo \
-                                --fitness-fn-weights 0.75 0.25
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name max-mahalanobis 
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
-                                --fitness-fn-weights 0.5 0.5
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name min-pairwise-euclidean-dist
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
-                                --fitness-fn-weights 0.75 0.25
-
-                            python3 -m src.sims.run_kenya_trial \
-                                --run-trial \
-                                --analyze-trial \
-                                --param-fname $param_fname \
-                                --potential-outcome-mdl-name $po_mdl_name \
-                                --rand-mdl-name $rand_mdl_name \
-                                --net-mdl-name $net_mdl_name \
-                                --cluster-lvl school \
-                                --rep-to-run $rep \
-                                --intxn-mdl-name power-decay \
-                                --gamma $gamma \
-                                --p-same-in $p_same_in \
-                                --p-diff-in-same-out $p_diff_in_same_out \
-                                --p-diff-in-diff-out $p_diff_in_diff_out \
-                                --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
-                                --fitness-fn-weights 0.25 0.75
-                            
                             # add mirror allocations only if they are not worse
                             # python3 -m src.sims.run_kenya_trial \
                             #     --run-trial \
@@ -241,7 +90,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -259,7 +107,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -276,7 +123,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -294,7 +140,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -312,7 +157,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -329,7 +173,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -347,7 +190,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -364,7 +206,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -382,7 +223,6 @@ then
                             #     --param-fname $param_fname \
                             #     --potential-outcome-mdl-name $po_mdl_name \
                             #     --rand-mdl-name $rand_mdl_name \
-                            #     --add-all-mirrors \
                             #     --net-mdl-name $net_mdl_name \
                             #     --cluster-lvl school \
                             #     --rep-to-run $rep \
@@ -393,6 +233,166 @@ then
                             #     --p-diff-in-diff-out $p_diff_in_diff_out \
                             #     --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
                             #     --fitness-fn-weights 0.25 0.75
+                            
+                            # add all mirror allocations 
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name lin-comb_max-mahalanobis_frac-expo \
+                                --fitness-fn-weights 0.5 0.5
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name frac-expo 
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name lin-comb_max-mahalanobis_frac-expo \
+                                --fitness-fn-weights 0.25 0.75
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name lin-comb_max-mahalanobis_frac-expo \
+                                --fitness-fn-weights 0.75 0.25
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name max-mahalanobis 
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
+                                --fitness-fn-weights 0.5 0.5
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name min-pairwise-euclidean-dist
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
+                                --fitness-fn-weights 0.75 0.25
+
+                            python3 -m src.sims.run_kenya_trial \
+                                --run-trial \
+                                --analyze-trial \
+                                --param-fname $param_fname \
+                                --potential-outcome-mdl-name $po_mdl_name \
+                                --rand-mdl-name $rand_mdl_name \
+                                --add-all-mirrors \
+                                --net-mdl-name $net_mdl_name \
+                                --cluster-lvl school \
+                                --rep-to-run $rep \
+                                --intxn-mdl-name power-decay \
+                                --gamma $gamma \
+                                --p-same-in $p_same_in \
+                                --p-diff-in-same-out $p_diff_in_same_out \
+                                --p-diff-in-diff-out $p_diff_in_diff_out \
+                                --fitness-fn-name lin-comb_max-mahalanobis_euclidean-dist \
+                                --fitness-fn-weights 0.25 0.75
                         done
                     done
                 done

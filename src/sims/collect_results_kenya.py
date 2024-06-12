@@ -30,11 +30,14 @@ if __name__ == "__main__":
                             print(trial_fname)
                             with open(trial_fname, "rb") as f:
                                 trial = pickle.load(f)
+                                trial.set_data_from_config()
+                                trial.set_design_from_config()
                             trial_res = {
                                 "params": param_subdir.name,
                                 "data_rep": trial_fname.stem.split("_")[0].split('-')[-1],
                                 "run_seed": trial_fname.stem.split("_")[1].split('-')[-1],
                                 "rand_mdl": rand_mdl_subdir.name,
+                                "rand_mdl_plt_name": trial.rand_mdl.plotting_name,
                                 "net_mdl": net_mdl_subdir.name,
                                 "po_mdl": po_mdl_subdir.name,
                                 "n_z": trial.config.n_z,
@@ -74,7 +77,7 @@ if __name__ == "__main__":
         )
 
         all_trial_res_agg = (
-            all_trial_res.groupby(["params", "data_rep", "po_mdl", "net_mdl", "rand_mdl", "n_z"])
+            all_trial_res.groupby(["params", "net_mdl", "po_mdl", "rand_mdl", "n_z", "n_cutoff"])
             .agg(
                 mean_tau_true=("tau_true", "mean"),
                 se_tau_true=("tau_true", "sem"),
@@ -93,7 +96,7 @@ if __name__ == "__main__":
         )
     else:
         all_trial_res_agg = (
-            all_trial_res.groupby(["params","data_rep", "po_mdl", "net_mdl", "rand_mdl", "n_z"])
+            all_trial_res.groupby(["params", "po_mdl", "net_mdl", "rand_mdl", "n_z", "n_cutoff"])
             .agg(
                 mean_tau_true=("tau_true", "mean"),
                 se_tau_true=("tau_true", "sem"),

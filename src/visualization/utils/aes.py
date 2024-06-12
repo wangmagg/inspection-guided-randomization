@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
 from matplotlib.ticker import FormatStrFormatter
+
 def get_hue_order(rand_mdl_names, ff_in_name=True):
     complete_names = [
         name for name in rand_mdl_names if "CR" in name and "IGR" not in name
@@ -16,6 +17,7 @@ def get_hue_order(rand_mdl_names, ff_in_name=True):
     ]
 
     restricted_name_pairs = []
+    rand_mdl_names = np.sort(rand_mdl_names)
     for name in rand_mdl_names:
         if "IGR" in name and "IGRg" not in name:
             igrg_name = name.replace("IGR", "IGRg")
