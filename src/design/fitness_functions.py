@@ -429,16 +429,22 @@ class MaxMahalanobis(Fitness):
 
         if USE_GPU:
             X = cp.asarray(X)
-            xp = cp
-        else:
-            xp = np
+            # calculate sample covariance matrix
+            x_bar = cp.expand_dims(cp.mean(X, axis=0), 1)
+            N = X.shape[0]
+            S_hat = 1 / (N - 1) * cp.matmul(X.T - x_bar, (X.T - x_bar).T)
+            s, u = cp.linalg.eigh(S_hat)
+            S_hat_inv = u @ (1 / s[..., None] * u.T)
+            self.S_hat_inv = S_hat_inv.get()
 
-        # calculate sample covariance matrix
-        x_bar = xp.expand_dims(xp.mean(X, axis=0), 1)
-        N = X.shape[0]
-        S_hat = 1 / (N - 1) * xp.matmul(X.T - x_bar, (X.T - x_bar).T)
-        s, u = xp.linalg.eigh(S_hat)
-        self.S_hat_inv = u @ (1 / s[..., None] * u.T)
+        else:
+            # calculate sample covariance matrix
+            x_bar = np.expand_dims(np.mean(X, axis=0), 1)
+            N = X.shape[0]
+            S_hat = 1 / (N - 1) * np.matmul(X.T - x_bar, (X.T - x_bar).T)
+            s, u = np.linalg.eigh(S_hat)
+            S_hat_inv = u @ (1 / s[..., None] * u.T)
+            self.S_hat_inv = S_hat_inv.get()
 
     @classmethod
     def from_trial(self, trial):
