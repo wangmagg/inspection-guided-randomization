@@ -142,13 +142,22 @@ class SimulatedTrial(ABC):
         pass
 
     @property
-    def X_fit(self) -> Union[pd.DataFrame, np.ndarray]:
+    def X_fit(self) -> np.ndarray:
         """
         Subset of covariates to use as input to fitness functions
         """
         if self.use_cols is not None:
-            return self.X[self.use_cols]
-        return self.X
+            X_subset = self.X[self.use_cols]
+        else:
+            X_subset = self.X
+
+        if isinstance(X_subset, pd.DataFrame):
+            X_subset = X_subset.to_numpy()
+        
+        if USE_GPU:
+            return cp.asarray(X_subset)
+        else:
+            return X_subset
 
     def set_data_from_config(self):
         """

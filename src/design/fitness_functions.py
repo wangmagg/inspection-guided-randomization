@@ -9,6 +9,11 @@ from joblib import Parallel, delayed
 
 from typing import List, Union, Optional
 
+try:
+    import cupy as cp
+    USE_GPU = True
+except ModuleNotFoundError:
+    USE_GPU = False
 
 class Fitness(ABC):
     """
@@ -37,7 +42,7 @@ class SMD(Fitness):
 
     def __init__(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
+        X: Union[np.ndarray],
         arm_compare_pairs: Optional[np.ndarray] = None,
         mapping: Optional[np.ndarray] = None,
         weights: Optional[np.ndarray] = None,
@@ -48,8 +53,6 @@ class SMD(Fitness):
         else:
             self.name = f"smd_weighted-{weights}-{covar_to_weight}"
 
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
         self.X = X
         self.arm_compare_pairs = arm_compare_pairs
         self.mapping = mapping
@@ -410,7 +413,7 @@ class MaxMahalanobis(Fitness):
 
     def __init__(
         self,
-        X: Union[pd.DataFrame, np.ndarray],
+        X: np.ndarray,
         arm_compare_pairs: Optional[np.ndarray] = None,
         mapping: Optional[np.ndarray] = None,
     ):
@@ -419,19 +422,21 @@ class MaxMahalanobis(Fitness):
             self.plotting_name = "Mahalanobis"
         else:
             self.plotting_name = "MaxMahalanobis"
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
+
         self.X = X
         self.arm_compare_pairs = arm_compare_pairs
         self.mapping = mapping
-        self.min = 0
-        self.max = np.inf
+
+        if USE_GPU:
+            xp = cp.get_array_module(self.X)
+        else:
+            xp = np
 
         # calculate sample covariance matrix
-        x_bar = np.expand_dims(np.mean(self.X, axis=0), 1)
+        x_bar = xp.expand_dims(xp.mean(self.X, axis=0), 1)
         N = self.X.shape[0]
-        S_hat = 1 / (N - 1) * np.matmul(self.X.T - x_bar, (self.X.T - x_bar).T)
-        s, u = np.linalg.eigh(S_hat)
+        S_hat = 1 / (N - 1) * xp.matmul(self.X.T - x_bar, (self.X.T - x_bar).T)
+        s, u = xp.linalg.eigh(S_hat)
         self.S_hat_inv = u @ (1 / s[..., None] * u.T)
 
     @classmethod

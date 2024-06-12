@@ -7,6 +7,11 @@ import pickle
 from src.sims.trial import SimulatedTrial, SimulatedTrialConfig
 from src.sims import trial_loader
 
+try:
+    import cupy as cp
+    USE_GPU = True
+except ModuleNotFoundError:
+    USE_GPU = False
 
 class KenyaTrialConfig(SimulatedTrialConfig):
     """
@@ -188,6 +193,11 @@ class SimulatedKenyaTrial(SimulatedTrial):
             .groupby("school_id")
             .mean()
         )
+
+        if USE_GPU:
+            A = cp.asarray(A)
+            y_0 = cp.asarray(y_0)
+            y_1 = cp.asarray(y_1)
         
         return y_0, y_1, X, X_school, G, A, sch_coords, inner_to_outer_mapping
 
