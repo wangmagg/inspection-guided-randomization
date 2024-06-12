@@ -4,7 +4,7 @@ declare -a net_mdl_name_arr=("nested-2lvl-sb")
 declare -a rand_mdl_name_arr=("restricted" "restricted-genetic")
 declare -a po_mdl_name_arr=("kenya-hierarchical-nbr-sum")
 declare -a gamma_arr=(0.5)
-declare -a rep_arr=(0 1 2 3 4)
+declare -a rep_arr=(0 1 2 3 4 5 6 7 8 9)
 
 run_flag=$1
 p_same_in=$2

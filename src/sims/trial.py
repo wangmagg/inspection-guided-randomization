@@ -244,7 +244,7 @@ class SimulatedTrial(ABC):
 
             print("Getting p-values")
             pvals = Parallel(n_jobs=4, max_nbytes=int(1e6))(
-                delayed(p_val_fn)(z_pool, y_obs_pool, idx)
+                delayed(p_val_fn)(z_pool=z_pool, y_obs_pool=y_obs_pool, idx=idx)
                 for idx in tqdm(range(z_pool.shape[0]))
             )
         
