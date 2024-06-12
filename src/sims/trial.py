@@ -211,40 +211,41 @@ class SimulatedTrial(ABC):
 
         estimator, p_val_fn = trial_loader.get_estimator(self)
 
-        if USE_GPU:
-            tau_hat_pool = [
-                estimator(z, y_obs) for z, y_obs in tqdm(zip(self.z_pool, self.y_obs_pool), total=self.z_pool.shape[0])
-            ]
-            pvals = [
-                p_val_fn(z_pool=self.z_pool, y_obs_pool=self.y_obs_pool, idx=idx)
-                for idx in tqdm(range(self.z_pool.shape[0]))
-            ]
-        else:
-            tmp_memmap_dir = Path(self.config.out_dir) / "tmp_memmap"
-            if not tmp_memmap_dir.exists():
-                tmp_memmap_dir.mkdir(parents=True, exist_ok=True)
-            
-            z_pool_fname_memmap = tmp_memmap_dir / "z_pool"
-            y_obs_pool_fname_memmap = tmp_memmap_dir / "y_obs_pool"
+        # if USE_GPU:
+        #     print("Getting treatment effect estimates")
+        #     tau_hat_pool = [
+        #         estimator(z, y_obs) for z, y_obs in tqdm(zip(self.z_pool, self.y_obs_pool), total=self.z_pool.shape[0])
+        #     ]
+        #     print("Getting p-values")
+        #     pvals = [
+        #         p_val_fn(z_pool=self.z_pool, y_obs_pool=self.y_obs_pool, idx=idx)
+        #         for idx in tqdm(range(self.z_pool.shape[0]))
+        #     ]
+        # else:
+        tmp_memmap_dir = Path(self.config.out_dir) / "tmp_memmap"
+        if not tmp_memmap_dir.exists():
+            tmp_memmap_dir.mkdir(parents=True, exist_ok=True)
+        
+        z_pool_fname_memmap = tmp_memmap_dir / "z_pool"
+        y_obs_pool_fname_memmap = tmp_memmap_dir / "y_obs_pool"
 
-            dump(self.z_pool, z_pool_fname_memmap)
-            dump(self.y_obs_pool, y_obs_pool_fname_memmap)
+        dump(self.z_pool, z_pool_fname_memmap)
+        dump(self.y_obs_pool, y_obs_pool_fname_memmap)
 
-            z_pool = load(z_pool_fname_memmap, mmap_mode="r")
-            y_obs_pool = load(y_obs_pool_fname_memmap, mmap_mode="r")
-            
-            print("Getting treatment effect estimates")
-            tau_hat_pool = Parallel(n_jobs=4, max_nbytes=int(1e6))(
-                delayed(estimator)(z, y_obs) for z, y_obs in tqdm(
-                    zip(z_pool, y_obs_pool), total=z_pool.shape[0]
-                )
+        z_pool = load(z_pool_fname_memmap, mmap_mode="r")
+        y_obs_pool = load(y_obs_pool_fname_memmap, mmap_mode="r")
+        
+        print("Getting treatment effect estimates")
+        tau_hat_pool = Parallel(n_jobs=4, max_nbytes=int(1e6))(
+            delayed(estimator)(z, y_obs) for z, y_obs in tqdm(
+                zip(z_pool, y_obs_pool), total=z_pool.shape[0]
             )
-
-            print("Getting p-values")
-            pvals = Parallel(n_jobs=4, max_nbytes=int(1e6))(
-                delayed(p_val_fn)(z_pool=z_pool, y_obs_pool=y_obs_pool, idx=idx)
-                for idx in tqdm(range(z_pool.shape[0]))
-            )
+        )
+        print("Getting p-values")
+        pvals = Parallel(n_jobs=4, max_nbytes=int(1e6))(
+            delayed(p_val_fn)(z_pool=z_pool, y_obs_pool=y_obs_pool, idx=idx)
+            for idx in tqdm(range(z_pool.shape[0]))
+        )
         
         self.tau_hat = tau_hat_pool[self.chosen_idx]
         self.tau_hat_pool = tau_hat_pool
