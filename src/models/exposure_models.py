@@ -63,7 +63,7 @@ class FracNbr(ExposureModel):
         if USE_GPU:
            A = cp.array(A)
            z = cp.array(z)
-           n_z1_nbrs = cp.dot(A.T, z.T).T
+           n_z1_nbrs = cp.dot(A.T, z.T).T.get()
         else:
            n_z1_nbrs = np.dot(A.T, z.T).T
         time_end = time.time()
