@@ -443,8 +443,7 @@ class MaxMahalanobis(Fitness):
             N = X.shape[0]
             S_hat = 1 / (N - 1) * np.matmul(X.T - x_bar, (X.T - x_bar).T)
             s, u = np.linalg.eigh(S_hat)
-            S_hat_inv = u @ (1 / s[..., None] * u.T)
-            self.S_hat_inv = S_hat_inv.get()
+            self.S_hat_inv = u @ (1 / s[..., None] * u.T)
 
     @classmethod
     def from_trial(self, trial):
@@ -453,51 +452,6 @@ class MaxMahalanobis(Fitness):
         creates an instance of MaxMahalanobis using data from trial
         """
         return self(trial.X_fit, trial.arm_compare_pairs, trial.mapping)
-
-    def _get_arm_means(self, z: np.ndarray) -> np.ndarray:
-        """
-        Calculate covariate mean vectors for each arm
-
-        Args:
-            - z: treatment assignment vector
-        Returns:
-            - arm_means: covariate mean vectors for each arm (n_arms x n_covariates)
-        """
-        n_arms = int(np.max(z) + 1)
-
-        # calculate mean of each covariate for each arm
-        arm_means = np.zeros((n_arms, self.X.shape[1]))
-        for arm in range(n_arms):
-            arm_means[arm, :] = np.mean(self.X[z == arm, :], axis=0)
-
-        return arm_means
-
-    def _single_z(self, z: np.ndarray) -> np.float32:
-        """
-        Calculate maximum Mahalanobis distance for a single treatment assignment
-
-        Args:
-            - z: treatment assignment vector
-        Returns:
-            Maximum Mahalanobis distance across all pairwise arm comparisons
-        """
-        arm_means = self._get_arm_means(z)
-        if self.arm_compare_pairs is None:
-            self.arm_compare_pairs = np.array(
-                list(combinations(range(arm_means.shape[0]), 2))
-            )
-        if np.ndim(self.arm_compare_pairs) == 1:
-            self.arm_compare_pairs = np.expand_dims(self.arm_compare_pairs, axis=0)
-
-        dists = [
-            mahalanobis(arm_means[p[0], :], arm_means[p[1], :], self.S_hat_inv)
-            for p in self.arm_compare_pairs
-        ]
-
-        # get maximum distance across all pairwise arm comparisons
-        max_dist = np.max(dists)
-
-        return max_dist
 
     def __call__(self, z_pool: np.ndarray) -> np.ndarray:
         """

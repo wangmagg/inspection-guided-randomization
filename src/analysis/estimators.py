@@ -8,23 +8,21 @@ except ModuleNotFoundError:
     USE_GPU=False
 
 def diff_in_means(z, y_obs):
-    if USE_GPU:
-        xp = cp.get_array_module(z)
-    else:
-        xp = np
-       
-    if y_obs.ndim > 1:
-        mean_1 = xp.diag(xp.matmul(z, xp.transpose(y_obs))) / xp.sum(
-            xp.atleast_2d(z), axis=1
-        )
-        mean_0 = xp.diag(xp.matmul(1 - z, xp.transpose(y_obs))) / xp.sum(
-            xp.atleast_2d(1 - z), axis=1
-        )
-    else:
-        mean_1 = xp.matmul(z, y_obs) / xp.sum(xp.atleast_2d(z), axis=1)
-        mean_0 = xp.matmul(1 - z, y_obs) / xp.sum(xp.atleast_2d(1 - z), axis=1)
+    xp = cp.get_array_module(z) if USE_GPU else np
 
-    return xp.squeeze(mean_1 - mean_0)[()]
+    z_2d = xp.atleast_2d(z)
+    z_comp_2d = xp.atleast_2d(1 - z)
+    
+    if y_obs.ndim > 1:
+        mean_1 = xp.diag(xp.matmul(z, y_obs.T)) / xp.sum(z_2d, axis=1)
+        mean_0 = xp.diag(xp.matmul(1 - z, y_obs.T)) / xp.sum(z_comp_2d, axis=1)
+    else:
+        mean_1 = xp.matmul(z, y_obs) / xp.sum(z_2d, axis=1)
+        mean_0 = xp.matmul(1 - z, y_obs) / xp.sum(z_comp_2d, axis=1)
+
+    tau_hat = xp.squeeze(mean_1 - mean_0)
+
+    return tau_hat
 
 
 def diff_in_means_mult_arm(z, y_obs, n_arms, arm_compare_pairs=None):
