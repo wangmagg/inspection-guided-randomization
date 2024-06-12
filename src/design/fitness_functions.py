@@ -461,7 +461,7 @@ class MaxMahalanobis(Fitness):
         # calculate mean of each covariate for each arm
         arm_means = np.zeros((n_arms, self.X.shape[1]))
         for arm in range(n_arms):
-            arm_means[arm, :] = np.mean(self.X[z == arm, :], axis=0)
+            arm_means[arm, :] = xp.mean(self.X[z == arm, :], axis=0)
 
         return arm_means
 
@@ -505,19 +505,24 @@ class MaxMahalanobis(Fitness):
             z_pool = np.vstack([z[self.mapping] for z in z_pool])
 
         def _single_z(z, X, arm_compare_pairs):
-            n_arms = int(np.max(z) + 1)
+            if USE_GPU:
+                xp = cp.get_array_module(self.X)
+            else:
+                xp = np
+
+            n_arms = int(xp.max(z) + 1)
 
             # calculate mean of each covariate for each arm
-            arm_means = np.zeros((n_arms, X.shape[1]))
+            arm_means = xp.zeros((n_arms, X.shape[1]))
             for arm in range(n_arms):
-                arm_means[arm, :] = np.mean(X[z == arm, :], axis=0)
+                arm_means[arm, :] = xp.mean(X[z == arm, :], axis=0)
 
             if arm_compare_pairs is None:
-                arm_compare_pairs = np.array(
+                arm_compare_pairs = xp.array(
                     list(combinations(range(arm_means.shape[0]), 2))
                 )
-            if np.ndim(arm_compare_pairs) == 1:
-                arm_compare_pairs = np.expand_dims(arm_compare_pairs, axis=0)
+            if xp.ndim(arm_compare_pairs) == 1:
+                arm_compare_pairs = xp.expand_dims(arm_compare_pairs, axis=0)
 
             dists = [
                 mahalanobis(arm_means[p[0], :], arm_means[p[1], :], self.S_hat_inv)
@@ -528,11 +533,14 @@ class MaxMahalanobis(Fitness):
             max_dist = np.max(dists)
 
             return max_dist
-
+        
         time_start = time.time()
-        scores = Parallel(n_jobs=2, max_nbytes=int(1e6))(
-            delayed(_single_z)(z, self.X, self.arm_compare_pairs) for z in z_pool
-        )
+        if USE_GPU:
+            scores = [_single_z(z, self.X, self.arm_compare_pairs) for z in z_pool]
+        else:
+            scores = Parallel(n_jobs=2, max_nbytes=int(1e6))(
+                delayed(_single_z)(z, self.X, self.arm_compare_pairs) for z in z_pool
+            )
         scores = np.array(scores)
         time_end = time.time()
         print(f"max-mahalanobis scores: {time_end - time_start:.2f}s")
