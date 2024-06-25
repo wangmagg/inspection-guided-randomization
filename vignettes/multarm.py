@@ -31,7 +31,7 @@ from src.utils.genetic_algorithms import get_genetic_kwargs
 def multarm_config():
     parser = ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--n-data-samples", type=int, default=1)
+    parser.add_argument("--data-iter", type=int, default=0)
 
     parser.add_argument("--n-stu", type=int, default=80)
     parser.add_argument("--n-arms", type=int, default=4)
@@ -65,10 +65,15 @@ def multarm_config():
         "genetic": genetic_kwargs,
         "save": subdir_dict
     }
-    save_dgp_dir = Path(args.out_dir) / f"n-{args.n_stu}_arms-{args.n_arms}"
+    save_dir_dgp = Path(args.out_dir) / f"n-{args.n_stu}_arms-{args.n_arms}"
     save_subdirs = [f"{k}-{v}" for k, v in subdir_dict.items()]
+    save_dir_data = save_dir_dgp / str(args.data_iter)
+    save_dir_res = save_dir_dgp / str(args.data_iter) / Path(*save_subdirs)
 
-    return args, kwargs, save_dgp_dir, save_subdirs
+    if not save_dir_res.exists():
+        save_dir_res.mkekdir(parents=True)
+
+    return args, kwargs, save_dir_data, save_dir_res
 
 def restriction(
     design,
@@ -219,126 +224,119 @@ def run_trial_and_analyze(
         res_df.to_csv(res_path, index=False)
 
 if __name__ == "__main__":
-    args, kwargs, save_dgp_dir, save_subdirs = multarm_config()
+    args, kwargs, save_dir_data, save_dir_res = multarm_config()
 
-    for data_iter in range(args.n_data_samples):
-        save_dir_data_iter = save_dgp_dir / str(data_iter)
-        save_dir_iter = save_dir_data_iter / Path(*save_subdirs)
-        if not save_dir_iter.exists():
-            save_dir_iter.mkdir(parents=True)
+    # Generate data
+    y_0, y_1, X = gen_multarm_data(args.n_stu, args.tau_sizes, args.sigma, args.seed + args.data_iter)
+    kwargs["metric"]["X"] = X.to_numpy()
+    X.to_csv(save_dir_data / f"X.csv", index=False)
 
-        # Generate data
-        y_0, y_1, X = gen_multarm_data(args.n_stu, args.tau_sizes, args.sigma, args.seed + data_iter)
-        kwargs["metric"]["X"] = X.to_numpy()
-        X.to_csv(save_dir_data_iter / f"X.csv", index=False)
+    # Generate pool of candidate treatment allocations
+    z_pool = igr_enumeration(args.n_stu, args.n_arms, args.n_enum, args.seed)
 
-        # Generate pool of candidate treatment allocations
-        z_pool = igr_enumeration(args.n_stu, args.n_arms, args.n_enum, args.seed)
+    # Run IGR and IGRg for each metric
+    dp_fig, dp_axs = setup_fig(ncols=len(args.metric), sharex=False, sharey=True)
+    or_fig, or_axs = setup_fig(ncols=len(args.metric), sharex=True, sharey=True)
 
-        # Run IGR and IGRg for each metric
-        dp_fig, dp_axs = setup_fig(ncols=len(args.metric), sharex=False, sharey=True)
-        or_fig, or_axs = setup_fig(ncols=len(args.metric), sharex=True, sharey=True)
+    for i, metric_name in enumerate(args.metric):
+        metric = get_metric(metric_name)
 
-        for i, metric_name in enumerate(args.metric):
-            metric = get_metric(metric_name)
-
-            # Run CR benchmark
-            z_accepted_cr, scores_pool_cr, scores_accepted_cr = restriction(
-                "CR", 
-                z_pool, 
-                args.n_accept, 
-                save_dir_iter,
-                metric=metric,
-                metric_kwargs=kwargs["metric"])
-            run_trial_and_analyze(
-                "CR", 
-                y_0, y_1, z_accepted_cr, 
-                kwargs["metric"]["comps"], 
-                save_dir_iter, data_iter, 
-                subdir_dict=kwargs["save"]
-                )
-
-            # Run QB benchmark
-            z_accepted_qb, scores_pool_qb, scores_accepted_qb = restriction(
-                "QB",
-                None,
-                args.n_accept,
-                save_dir_iter,
-                save_path_data=save_dir_data_iter / "X.csv",
-                metric=metric,
-                metric_kwargs=kwargs["metric"],
-                seed=args.seed
-            )
-            run_trial_and_analyze(
-                "QB", 
-                y_0, y_1, z_accepted_qb, 
-                kwargs["metric"]["comps"], 
-                save_dir_iter, data_iter, 
-                subdir_dict=kwargs["save"])
-            
-            # Run IGR
-            z_accepted_igr, scores_pool_igr, scores_accepted_igr = restriction(
-                "IGR",
-                z_pool,
-                args.n_accept,
-                save_dir_iter,
-                metric=metric,
-                metric_kwargs=kwargs["metric"],
-            )
-            run_trial_and_analyze(
-                "IGR",
-                y_0, y_1, z_accepted_igr, 
-                kwargs["metric"]["comps"], 
-                save_dir_iter, data_iter,
-                metric_lbl = metric_name,
-                subdir_dict=kwargs["save"])
-
-            # Run IGRg
-            z_accepted_igr_g, scores_pool_igrg, scores_accepted_igrg = restriction(
-                "IGRg",
-                z_pool,
-                args.n_accept,
-                save_dir_iter,
-                metric=metric,
-                metric_kwargs=kwargs["metric"],
-                genetic_kwargs=kwargs["genetic"],
-            )
-            run_trial_and_analyze(
-                f"IGRg", 
-                y_0, y_1, z_accepted_igr_g, 
-                kwargs["metric"]["comps"], 
-                save_dir_iter, data_iter, 
-                metric_lbl = metric_name,
-                subdir_dict=kwargs["save"])
-
-            # Perform IGR checks
-            discriminatory_power(
-                fitness_lbl=metric_name,
-                scores_1=scores_pool_igr,
-                scores_1_g=scores_pool_igrg,
-                n_accept=args.n_accept,
-                ax=dp_axs[i]
-            )
-            overrestriction(
-                fitness_lbl=metric_name,
-                design_to_z_accepted={
-                    "CR": z_accepted_cr,
-                    "QB": z_accepted_qb,
-                    "IGR": z_accepted_igr,
-                    "IGRg": z_accepted_igr_g,
-                },
-                ax=or_axs[i]
+        # Run CR benchmark
+        z_accepted_cr, scores_pool_cr, scores_accepted_cr = restriction(
+            "CR", 
+            z_pool, 
+            args.n_accept, 
+            save_dir_res,
+            metric=metric,
+            metric_kwargs=kwargs["metric"])
+        run_trial_and_analyze(
+            "CR", 
+            y_0, y_1, z_accepted_cr, 
+            kwargs["metric"]["comps"], 
+            save_dir_res, args.data_iter, 
+            subdir_dict=kwargs["save"]
             )
 
-            # Save IGR checks 
-            if not (save_dir_iter / "igr_checks").exists():
-                (save_dir_iter / "igr_checks").mkdir()
-            dp_fig.savefig(save_dir_iter / "igr_checks" / f"discriminatory_power.svg", transparent=True, bbox_inches="tight")
-            or_fig.savefig(save_dir_iter / "igr_checks" / f"overrestriction.svg", transparent=True, bbox_inches="tight")
+        # Run QB benchmark
+        z_accepted_qb, scores_pool_qb, scores_accepted_qb = restriction(
+            "QB",
+            None,
+            args.n_accept,
+            save_dir_res,
+            save_path_data=save_dir_data / "X.csv",
+            metric=metric,
+            metric_kwargs=kwargs["metric"],
+            seed=args.seed
+        )
+        run_trial_and_analyze(
+            "QB", 
+            y_0, y_1, z_accepted_qb, 
+            kwargs["metric"]["comps"], 
+            save_dir_res, args.data_iter, 
+            subdir_dict=kwargs["save"])
+        
+        # Run IGR
+        z_accepted_igr, scores_pool_igr, scores_accepted_igr = restriction(
+            "IGR",
+            z_pool,
+            args.n_accept,
+            save_dir_res,
+            metric=metric,
+            metric_kwargs=kwargs["metric"],
+        )
+        run_trial_and_analyze(
+            "IGR",
+            y_0, y_1, z_accepted_igr, 
+            kwargs["metric"]["comps"], 
+            save_dir_res, args.data_iter,
+            metric_lbl = metric_name,
+            subdir_dict=kwargs["save"])
 
-            plt.close(dp_fig)
-            plt.close(or_fig)
+        # Run IGRg
+        z_accepted_igr_g, scores_pool_igrg, scores_accepted_igrg = restriction(
+            "IGRg",
+            z_pool,
+            args.n_accept,
+            save_dir_res,
+            metric=metric,
+            metric_kwargs=kwargs["metric"],
+            genetic_kwargs=kwargs["genetic"],
+        )
+        run_trial_and_analyze(
+            f"IGRg", 
+            y_0, y_1, z_accepted_igr_g, 
+            kwargs["metric"]["comps"], 
+            save_dir_res, args.data_iter, 
+            metric_lbl = metric_name,
+            subdir_dict=kwargs["save"])
 
-            # Save estimation and inference results 
-            collect_res_csvs(save_dgp_dir, n_arms=args.n_arms - 1)
-            
+        # Perform IGR checks
+        discriminatory_power(
+            fitness_lbl=metric_name,
+            scores_1=scores_pool_igr,
+            scores_1_g=scores_pool_igrg,
+            n_accept=args.n_accept,
+            ax=dp_axs[i]
+        )
+        overrestriction(
+            fitness_lbl=metric_name,
+            design_to_z_accepted={
+                "CR": z_accepted_cr,
+                "QB": z_accepted_qb,
+                "IGR": z_accepted_igr,
+                "IGRg": z_accepted_igr_g,
+            },
+            ax=or_axs[i]
+        )
+
+        # Save IGR checks 
+        if not (save_dir_res / "igr_checks").exists():
+            (save_dir_res / "igr_checks").mkdir()
+        dp_fig.savefig(save_dir_res / "igr_checks" / f"discriminatory_power.svg", transparent=True, bbox_inches="tight")
+        or_fig.savefig(save_dir_res / "igr_checks" / f"overrestriction.svg", transparent=True, bbox_inches="tight")
+        plt.close(dp_fig)
+        plt.close(or_fig)
+
+        # Save estimation and inference results 
+        collect_res_csvs(save_dir_data.parent, n_arms=args.n_arms - 1)
+        

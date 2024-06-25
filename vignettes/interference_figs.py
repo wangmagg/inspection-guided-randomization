@@ -1,13 +1,14 @@
 from argparse import ArgumentParser
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, ticker
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import pickle
 import seaborn as sns
 
-from src.utils.aesthetics import get_palette, get_hue_order, format_ax, adjust_joint_grid_limits
+from src.utils.aesthetics import color_mapping, get_palette, get_hue_order, format_ax, adjust_joint_grid_limits
 from src.aggregators import LinComb
+from src.utils.collate import perc_of_benchmark
 
 def _parse_design(design):
     design_prefix = design.split(" - ")[0]
@@ -51,13 +52,33 @@ def interference_bias_rmse_rr_vs_weight(
         x="w_balance",
         y="perc_CR_bias",
         hue="design_no_weights",
+        linewidth=1,
+        alpha=0.5,
+        units="data_iter",
+        estimator=None,
         palette=palette,
         hue_order=hue_order,
-        ax = ax[0]
+        ax = ax[0],
+        legend=False
     )
-    ax[0].axhline(100, color='black', linestyle='--', linewidth=1, label="CR")
+    sns.lineplot(
+        data=res_igr,
+        x="w_balance",
+        y="perc_CR_bias",
+        hue="design_no_weights",
+        marker="o",
+        markersize=4,
+        markeredgecolor="black",
+        linewidth=3,
+        palette=palette,
+        hue_order=hue_order,
+        ax = ax[0],
+        errorbar=None
+    )
+    # ax[0].axhline(100, color='black', linestyle='--', linewidth=1, label="CR")
     ax[0].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
     ax[0].set_ylabel("% CR Bias", fontsize=18)
+    ax[0].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
     ax[0].tick_params(axis="x", labelsize=16)
     ax[0].tick_params(axis="y", labelsize=16)
     ax[0].get_legend().set_visible(False)
@@ -69,13 +90,33 @@ def interference_bias_rmse_rr_vs_weight(
         x="w_balance",
         y="perc_CR_rmse",
         hue="design_no_weights",
+        linewidth=1,
+        alpha=0.5,
+        units="data_iter",
+        estimator=None,
         palette=palette,
         hue_order=hue_order,
-        ax = ax[1]
+        ax = ax[1],
+        legend=False
     )
-    ax[1].axhline(100, color='black', linestyle='--', linewidth=1, label="CR")
+    sns.lineplot(
+        data=res_igr,
+        x="w_balance",
+        y="perc_CR_rmse",
+        hue="design_no_weights",
+        marker="o",
+        markersize=4,
+        markeredgecolor="black",
+        linewidth=3,
+        palette=palette,
+        hue_order=hue_order,
+        ax = ax[1],
+        errorbar=None
+    )
+    # ax[1].axhline(100, color='black', linestyle='--', linewidth=1, label="CR")
     ax[1].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
     ax[1].set_ylabel("% CR RMSE", fontsize=18)
+    ax[1].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
     ax[1].tick_params(axis="x", labelsize=16)
     ax[1].tick_params(axis="y", labelsize=16)
     ax[1].get_legend().set_visible(False)
@@ -86,12 +127,34 @@ def interference_bias_rmse_rr_vs_weight(
         x="w_balance",
         y="rr",
         hue="design_no_weights",
+        linewidth=1,
+        alpha=0.5,
+        units="data_iter",
+        estimator=None,
         palette=palette,
         hue_order=hue_order,
-        ax = ax[2]
+        ax = ax[2],
+        legend=False
     )
-    cr_rr = res[res['design'] == 'CR']['rr'].mean()
-    ax[2].axhline(cr_rr, color='black', linestyle='--', linewidth=1, label="CR")
+
+    sns.lineplot(
+        data=res_igr,
+        x="w_balance",
+        y="rr",
+        hue="design_no_weights",
+        marker="o",
+        markersize=4,
+        markeredgecolor="black",
+        linewidth=3,
+        palette=palette,
+        hue_order=hue_order,
+        ax=ax[2],
+        errorbar=None,
+    )
+    cr_rr = res[res['design'] == 'CR']['rr']
+    ax[2].axhline(cr_rr.mean(), color=color_mapping("CR"), linewidth=3, label="CR")
+    for rr in cr_rr:
+        ax[2].axhline(rr, color=color_mapping("CR"), linewidth=1, alpha=0.5)
     ax[2].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
     ax[2].set_ylabel("Rejection Rate", fontsize=18)
     ax[2].tick_params(axis="x", labelsize=16)
@@ -115,6 +178,167 @@ def interference_bias_rmse_rr_vs_weight(
     save_path = fig_dir / save_fname
     fig.savefig(save_path, bbox_inches="tight", transparent=True)
 
+def interference_bias_rmse_rr_vs_enum(
+    b_weights,
+    i_weights,
+    tau_size,
+    res_dir,
+    fig_dir
+):
+    res_df = pd.read_csv(res_dir / "res_collated.csv")
+
+    for (b_w, i_w) in zip(b_weights, i_weights):
+        res_subdf = res_df[((res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*FracExpo")|
+                                    (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*FracExpo") |
+                                    (res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvEuclidDist") |
+                                    (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvEuclidDist") |
+                                    (res_df["design"] == "CR")) & 
+                                    (res_df["tau_size"] == tau_size)].copy()
+        res_subdf["var"] = res_subdf["rmse"] - res_subdf["bias"]**2
+
+        iter_group_cols = res_subdf.columns[~res_subdf.columns.str.contains("^.*?bias.*?$|^.*?rmse.*?$|^rr.*?$|^var|^design$")].tolist()
+        res_subdf.sort_values(by=iter_group_cols, inplace=True)
+        res_subdf["perc_CR_var"] = (
+            res_subdf.groupby(iter_group_cols, dropna=False)
+            .apply(lambda x: perc_of_benchmark("CR", x, "var"))
+            .reset_index(drop=True)
+            .sort_index()
+            .values
+        )
+
+        n_accepts = np.sort(res_df["n_accept"].unique())
+        fig, axs = plt.subplots(3, len(n_accepts), figsize=(6*len(n_accepts), 18), sharey='row', sharex='all')
+        palette = get_palette(res_subdf['design'].unique())
+        hue_order = get_hue_order(res_subdf['design'].unique())
+
+        for i, n_accept in enumerate(n_accepts):
+            sns.lineplot(
+                data=res_subdf[(res_subdf["n_accept"] == n_accept) & (res_subdf["design"] != "CR")],
+                x="n_enum",
+                y="perc_CR_bias",
+                hue="design",
+                linewidth=1,
+                alpha=0.5,
+                palette=palette,
+                hue_order=hue_order,
+                units="data_iter",
+                estimator=None,
+                legend=False,
+                ax=axs[0][i],
+            )
+            sns.lineplot(
+                data=res_subdf[(res_subdf["n_accept"] == n_accept) & (res_subdf["design"] != "CR")],
+                x="n_enum",
+                y="perc_CR_bias",
+                hue="design",
+                marker='o', 
+                markersize=4,
+                markeredgecolor="black",
+                linewidth=3,
+                ax=axs[0][i],
+                palette=palette,
+                hue_order=hue_order,
+                errorbar=None
+            )
+            axs[0][i].set_title(f"m = {n_accept}", fontsize=16)
+            axs[0][i].set_xlabel("")
+            axs[0][i].set_ylabel("% CR Bias", fontsize=16)
+            axs[0][i].tick_params(axis='y', which='major', labelsize=16)
+            axs[0][i].get_legend().set_visible(False)
+
+            sns.lineplot(
+                data=res_subdf[(res_subdf["n_accept"] == n_accept) & (res_subdf["design"] != "CR")],
+                x="n_enum",
+                y="perc_CR_var",
+                hue="design",
+                linewidth=1,
+                ax=axs[1][i],
+                palette=palette,
+                hue_order=hue_order,
+                units="data_iter",
+                estimator=None,
+                alpha=0.5,
+                legend=False
+            )
+            sns.lineplot(
+                data=res_subdf[(res_subdf["n_accept"] == n_accept) & (res_subdf["design"] != "CR")],
+                x="n_enum",
+                y="perc_CR_var",
+                hue="design",
+                marker='o', 
+                markersize=4,
+                markeredgecolor="black",
+                linewidth=3,
+                ax=axs[1][i],
+                palette=palette,
+                hue_order=hue_order,
+                errorbar=None
+            )
+            axs[1][i].set_xlabel("")
+            axs[1][i].set_ylabel("% CR Variance", fontsize=16)
+            axs[1][i].tick_params(axis='y', which='major', labelsize=16)
+            axs[1][i].get_legend().set_visible(False)
+
+            sns.lineplot(
+                data=res_subdf[res_subdf["n_accept"] == n_accept],
+                x="n_enum",
+                y="rr",
+                hue="design",
+                linewidth=1,
+                ax=axs[2][i],
+                palette=palette,
+                hue_order=hue_order,
+                units="data_iter",
+                estimator=None,
+                alpha=0.5,
+                legend=False
+            )
+            sns.lineplot(
+                data=res_subdf[res_subdf["n_accept"] == n_accept],
+                x="n_enum",
+                y="rr",
+                hue="design",
+                linewidth=3,
+                marker='o', 
+                markersize=4,
+                markeredgecolor="black",
+                palette=palette,
+                hue_order=hue_order,
+                errorbar=None,
+                ax=axs[2][i]
+            )
+            axs[2][i].set_xlabel("M", fontsize=16)
+            axs[2][i].set_ylabel("Rejection Rate", fontsize=16)
+            axs[2][i].tick_params(axis='both', which='major', labelsize=16)
+            axs[2][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
+            axs[2][i].get_legend().set_visible(False)
+
+            # if i == len(n_accepts) - 1:
+            #     axs[0][i].get_legend().remove()
+            #     axs[1][i].get_legend().remove()
+            #     axs[2][i].legend(bbox_to_anchor=(0.3, -0.2), fontsize=16)
+            # else:
+            #     axs[0][i].get_legend().remove()
+            #     axs[1][i].get_legend().remove()
+            #     axs[2][i].get_legend().remove()
+        
+        handles, labels = axs[2][i].get_legend_handles_labels()
+        ncol = 1
+        bbox_to_anchor = (0.3, -0.2)
+        fig.legend(
+            handles,
+            labels,
+            title=None,
+            fontsize=16,
+            bbox_to_anchor=bbox_to_anchor,
+            ncol=ncol,
+            edgecolor="black",
+        )
+
+        # Save figure
+        save_fname = f"bias_rmse_rr_vs_enum_tau_size-{tau_size}_b-weight-{b_w}_i-weight-{i_w}.svg"
+        save_path = fig_dir / save_fname
+        fig.savefig(save_path, bbox_inches="tight", transparent=True)
 
 def interference_err_scatter(
     b_metrics,
@@ -249,6 +473,13 @@ if __name__ == "__main__":
         res_dir=out_dir / dgp_subdir,
         fig_dir=out_dir / dgp_subdir,
     )
+    interference_bias_rmse_rr_vs_enum(
+        b_weights=args.w1,
+        i_weights=args.w2,
+        tau_size=args.tau_size,
+        res_dir=out_dir / dgp_subdir,
+        fig_dir=out_dir / dgp_subdir
+    )
     
     res_dir = out_dir / dgp_subdir / f"{args.data_iter}" / tau_subdir / enum_subdir / accept_subdir / mirror_subdir 
     fig_dir = res_dir / 'res_figs'
@@ -269,6 +500,3 @@ if __name__ == "__main__":
         res_dir=res_dir,
         fig_dir=fig_dir
     )
-
-
-

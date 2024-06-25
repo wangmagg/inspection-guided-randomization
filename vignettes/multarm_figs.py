@@ -279,6 +279,96 @@ def multarm_err_scatter(
         jnt_grid.savefig(save_path, dpi=300, bbox_inches="tight", transparent=True)
         plt.close()
 
+def multarm_rmse_rr_vs_enum(
+    res_dir,
+    fig_dir
+):
+    res_df = pd.read_csv(res_dir / "res_collated.csv")
+    n_accepts = res_df["n_accept"].unique()
+
+    fig, axs = plt.subplots(2, len(n_accepts), figsize=(6*len(n_accepts), 12), sharey='row', sharex='all')
+    hue_order = get_hue_order(res_df['design'].unique())
+    palette = get_palette(res_df['design'].unique())
+
+    for i, n_accept in enumerate(n_accepts):
+        res_igr_subdf = res_df[(res_df["n_accept"] == n_accept) & ~res_df["design"].str.contains("CR")]
+        sns.lineplot(
+            data=res_igr_subdf,
+            x="n_enum",
+            y="perc_CR_rmse_2",
+            hue="design",
+            linewidth=1,
+            alpha=0.5,
+            palette=palette,
+            hue_order=hue_order,
+            units="data_iter",
+            estimator=None,
+            ax=axs[0][i],
+            legend=False,
+        )
+        sns.lineplot(
+            data=res_igr_subdf,
+            x="n_enum",
+            y="perc_CR_rmse_2",
+            hue="design",
+            marker='o', 
+            markersize=4,
+            markeredgecolor="black",
+            linewidth=3,
+            ax=axs[0][i],
+            palette=palette,
+            hue_order=hue_order,
+            errorbar=None,
+        )
+        axs[0][i].set_title(f"m = {n_accept}")
+        axs[0][i].set_ylabel("% CR RMSE", fontsize=16)
+        axs[0][i].tick_params(axis='y', which='major', labelsize=16)
+
+        res_subdf = res_df[(res_df["n_accept"] == n_accept)]
+        sns.lineplot(
+            data=res_subdf,
+            x="n_enum",
+            y="rr_2",
+            hue="design",
+            linewidth=1,
+            alpha=0.5,
+            palette=palette,
+            hue_order=hue_order,
+            units="data_iter",
+            estimator=None,
+            ax=axs[1][i],
+            legend=False,
+        )
+        sns.lineplot(
+            data=res_subdf,
+            x="n_enum",
+            y="rr_2",
+            hue="design",
+            marker='o', 
+            markersize=4,
+            markeredgecolor="black",
+            linewidth=3,
+            ax=axs[1][i],
+            palette=palette,
+            hue_order=hue_order,
+            errorbar=None,
+        )
+        axs[1][i].set_ylabel("Rejection Rate", fontsize=16)
+        axs[1][i].tick_params(axis='both', which='major', labelsize=16)
+        axs[1][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
+
+        if i == len(n_accepts) - 1:
+            axs[0][i].get_legend().remove()
+            axs[1][i].legend(bbox_to_anchor=(0.1, -0.2), ncol=3, fontsize=14)
+        else:
+            axs[0][i].get_legend().remove()
+            axs[1][i].get_legend().remove()
+
+    # Save figure
+    save_path = fig_dir / "rmse_rr_vs_enum.svg"
+    print(save_path)
+    fig.savefig(save_path, bbox_inches="tight", transparent=True)
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--out-dir", type=str, default="res/vig1_multarm")
@@ -332,4 +422,9 @@ if __name__ == "__main__":
         res_dir,
         fig_dir,
         arm_idx=1
+    )
+
+    multarm_rmse_rr_vs_enum(
+        res_dir=out_dir / dgp_subdir,
+        fig_dir=out_dir / dgp_subdir,
     )

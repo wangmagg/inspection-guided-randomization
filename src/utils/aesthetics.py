@@ -23,11 +23,11 @@ def color_mapping(design, metric_lbl=None):
     if re.match(pattern=r"^(?:IGR|IGR (GFR)) - MaxMahalanobis$", string=match_str) is not None:
         return "lightsalmon"
     if re.match(pattern=r"^(?:IGR|IGR (GFR)) - SumMaxAbsSMD$", string=match_str) is not None:
-        return "gold"
+        return "goldenrod"
     if re.match(pattern=r"^(?:IGRg|IGRg (GFR)) - MaxMahalanobis$", string=match_str) is not None:
         return "orangered"
     if re.match(pattern=r"^(?:IGRg|IGRg (GFR)) - SumMaxAbsSMD$", string=match_str) is not None:
-        return "darkorange"
+        return "sienna"
 
     # IGR with aggregated fitness fn, including an exposure metric, are green scheme 
     if re.match(pattern=r"^IGR - (.*?)FracExpo$", string=match_str) is not None:
@@ -37,9 +37,11 @@ def color_mapping(design, metric_lbl=None):
     
     # IGR with aggregated fitness fn, including a distance metric, are purple scheme
     if re.match(pattern=r"^IGR - (.*?)InvEuclidDist$", string=match_str) is not None:
-        return "thistle"
+        # return "thistle"
+        return "orchid"
     if re.match(pattern=r"^IGRg - (.*?)InvEuclidDist$", string=match_str) is not None:
-        return "mediumorchid"
+        # return "mediumorchid"
+        return "purple"
 
 def two_tone_color_mapping(design): 
     if r"$\mathcal{Z}_{pool}$" in design:
