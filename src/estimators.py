@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.linear_model import LinearRegression
 
 def get_tau_true(y_0, y_1, comps):
     y = np.vstack([y_0,  y_1])
