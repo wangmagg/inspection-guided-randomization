@@ -19,8 +19,8 @@ if __name__ == "__main__":
     out_dir = Path(args.out_dir) 
     rho_str = "-".join([str(rho) for rho in args.rhos])
     dgp_subdir = f"rhos-{rho_str}" 
-    enum_subdir = f"enum-{args.n_enum}"
-    accept_subdir = f"accept-{args.n_accept}"
+    enum_subdir = f"n_enum-{args.n_enum}"
+    accept_subdir = f"n_accept-{args.n_accept}"
 
     res_dir = out_dir / dgp_subdir / f"{args.data_iter}" / enum_subdir / accept_subdir 
     fig_dir = res_dir / 'res_figs'
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         fig_dir.mkdir(parents=True)
 
     X = pd.read_csv(out_dir / dgp_subdir / f"{args.data_iter}" / "X.csv")
-    X_no_male = X.drop(columns="male")
+    X_no_gender = X.drop(columns="gender")
     designs = ['GFR', 'IGR', 'IGRg']
     metric_lbls = ["SumMaxAbsSMD", "MaxMahalanobis"]
     n_arms = 2
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         designs,
         metric_lbls,
         n_groups,
-        X_no_male,
+        X_no_gender,
         comps,
         res_dir,
         fig_dir
