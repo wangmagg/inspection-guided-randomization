@@ -103,7 +103,8 @@ def discriminatory_power(
     ax.set_ylabel("Number of Allocations", fontsize=20)
     ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     ax.tick_params(axis="x", which="minor", rotation=30, labelsize=12)
-    ax.yaxis.get_offset_text().set_fontsize(14)
+    ax.tick_params(axis="both", which="major", labelsize=20)
+    ax.yaxis.get_offset_text().set_fontsize(18)
 
     legend = ax.legend_
     handles = legend.legend_handles
@@ -157,7 +158,7 @@ def desiderata_tradeoffs(
     jnt_grid.figure.suptitle(" +\n".join(fitness_lbl.split(" + ")), fontsize=22)
     jnt_grid.figure.subplots_adjust(top=0.85)
 
-    jnt_grid.ax_joint = format_ax(jnt_grid.ax_joint)
+    jnt_grid.ax_joint = format_ax(jnt_grid.ax_joint, lbl_size=14)
     jnt_grid.ax_joint.legend(
         title=None,
         markerscale=1.5,
@@ -175,6 +176,7 @@ def desiderata_tradeoffs_pool(
     metric_lbls,
     scores_pool,
     ax, 
+    title=None
 ):
     dt_fig = sns.histplot(
         x=scores_pool[0],
@@ -184,11 +186,15 @@ def desiderata_tradeoffs_pool(
         cbar=True,
         cmap=sns.color_palette("flare", as_cmap=True)
     )
-    ax = format_ax(ax)
+    ax = format_ax(ax, lbl_size=20)
     ax.set_xlabel(metric_lbls[0], fontsize=22)
     ax.set_ylabel(metric_lbls[1], fontsize=22)
+
     cbar = dt_fig.collections[0].colorbar
-    cbar.ax.tick_params(axis="y", labelsize=16)
+    cbar.ax.tick_params(axis="y", labelsize=20)
+
+    if title:
+        ax.set_title(title, fontsize=24)
 
 def overrestriction(
         fitness_lbl, 
@@ -243,6 +249,7 @@ def overrestriction(
     else:
         ax.set_xlabel(r"$\hat{P}(z_i = z_j)$", fontsize=20)
     ax.set_ylabel(r"Fraction of Pairs $(i, j)$", fontsize=20)
+    ax.tick_params(axis="both", which="major", labelsize=20)
 
     legend = ax.legend_
     handles = legend.legend_handles

@@ -115,7 +115,7 @@ def setup_fig(ncols, sharex, sharey, cbar=False):
 
     return fig, axs
 
-def format_ax(ax):
+def format_ax(ax, lbl_size=16):
     max_x = ax.get_xlim()[1]
     max_y = ax.get_ylim()[1]
 
@@ -139,7 +139,7 @@ def format_ax(ax):
 
     ax.xaxis.set_major_formatter(StrMethodFormatter(x_fmt))
     ax.yaxis.set_major_formatter(StrMethodFormatter(y_fmt))
-    ax.tick_params(axis='both', which='major', labelsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=lbl_size)
 
     return ax
 

@@ -328,7 +328,8 @@ if __name__ == "__main__":
         desiderata_tradeoffs_pool(
             metric_lbls = [b_metric_name, i_metric_name],
             scores_pool = scores_pool_cr,
-            ax = dp_pool_ax[0]
+            ax = dp_pool_ax[0],
+            title=rf"$\gamma = {args.gamma}$"
         )
         dt_pool_save_fname = f"{args.data_iter}_{b_metric_name} + {i_metric_name}_desiderata_tradeoffs_pool.svg"
         dp_pool_fig.savefig(save_dir_res / "igr_checks" / dt_pool_save_fname,

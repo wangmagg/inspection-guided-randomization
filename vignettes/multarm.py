@@ -71,7 +71,7 @@ def multarm_config():
     save_dir_res = save_dir_dgp / str(args.data_iter) / Path(*save_subdirs)
 
     if not save_dir_res.exists():
-        save_dir_res.mkekdir(parents=True)
+        save_dir_res.mkdir(parents=True)
 
     return args, kwargs, save_dir_data, save_dir_res
 
