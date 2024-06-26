@@ -1,3 +1,8 @@
+install.packages("tidyverse")
+install.packages("quickblock")
+install.packages("optparse")
+install.packages("roxygen2")
+
 suppressPackageStartupMessages(library(tibble))
 suppressPackageStartupMessages(library(quickblock))
 suppressPackageStartupMessages(library(optparse))

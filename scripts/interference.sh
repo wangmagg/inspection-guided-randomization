@@ -7,40 +7,22 @@ declare -a tau_size_arr=(0.3 0)
 declare -a mirror_arr=("all" "good")
 declare -a gamma_arr=(0.25 0.75)
 
-for iter in "${iter_arr[@]}"
-do
-    for enum in "${enum_arr[@]}"
-    do
-        for accept in "${accept_arr[@]}"
-        do
-            python3 -m vignettes.interference \
-                --data-iter $iter \
-                --n-enum $enum \
-                --n-accept $accept \
-                --mirror-type all \
-                --tau-size 0.3 \
-                --gamma 0.5 \
-                --w1 0.25 0.5 0.75 \
-                --w2 0.75 0.5 0.25
-        done
-    done
-done
 
 
-for iter in "${iter_arr[@]}"
-do 
-    for gamma in "${gamma_arr[@]}"
-    do
-        python3 -m vignettes.interference \
-            --data-iter $iter \
-            --n-enum 100000 \
-            --n-accept 500 \
-            --mirror-type all \
-            --gamma $gamma \
-            --w1 0.5 \
-            --w2 0.5 
-    done
-done
+# for iter in "${iter_arr[@]}"
+# do 
+#     for gamma in "${gamma_arr[@]}"
+#     do
+#         python3 -m vignettes.interference \
+#             --data-iter $iter \
+#             --n-enum 100000 \
+#             --n-accept 500 \
+#             --mirror-type all \
+#             --gamma $gamma \
+#             --w1 0.5 \
+#             --w2 0.5 
+#     done
+# done
 
 for iter in "${iter_arr[@]}"
 do
@@ -58,21 +40,21 @@ do
     done
 done
 
-for iter in "${iter_arr[@]}"
-do
-    for mirror in "${mirror_arr[@]}"
-    do
-        python3 -m vignettes.interference \
-            --data-iter $iter \
-            --n-enum 100000 \
-            --n-accept 500 \
-            --mirror-type $mirror \
-            --tau-size 0.3 \
-            --gamma 0.5 \
-            --w1 0.25 0.5 0.75 0 0.125 0.375 0.625 0.875 1 \
-            --w2 0.75 0.5 0.25 1 0.875 0.625 0.375 0.125 0
-    done
-done
+# for iter in "${iter_arr[@]}"
+# do
+#     for mirror in "${mirror_arr[@]}"
+#     do
+#         python3 -m vignettes.interference \
+#             --data-iter $iter \
+#             --n-enum 100000 \
+#             --n-accept 500 \
+#             --mirror-type $mirror \
+#             --tau-size 0.3 \
+#             --gamma 0.5 \
+#             --w1 0.25 0.5 0.75 0 0.125 0.375 0.625 0.875 1 \
+#             --w2 0.75 0.5 0.25 1 0.875 0.625 0.375 0.125 0
+#     done
+# done
 
 # figs
 python3 -m vignettes.interference --n-enum 100000 --n-accept 500 --mirror-type all --tau-size 0.3

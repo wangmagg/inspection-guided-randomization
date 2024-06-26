@@ -182,18 +182,24 @@ def interference_bias_rmse_rr_vs_enum(
     b_weights,
     i_weights,
     tau_size,
+    mirror_type,
     res_dir,
     fig_dir
 ):
     res_df = pd.read_csv(res_dir / "res_collated.csv")
 
+    # all_ymins = []
+    # all_ymaxs = []
+    # all_figs = []
+    # all_axs = []
     for (b_w, i_w) in zip(b_weights, i_weights):
         res_subdf = res_df[((res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*FracExpo")|
                                     (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*FracExpo") |
                                     (res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvEuclidDist") |
                                     (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvEuclidDist") |
                                     (res_df["design"] == "CR")) & 
-                                    (res_df["tau_size"] == tau_size)].copy()
+                                    (res_df["tau_size"] == tau_size) &
+                                    (res_df["mirror_type"] == mirror_type)].copy()
         res_subdf["var"] = res_subdf["rmse"] - res_subdf["bias"]**2
 
         iter_group_cols = res_subdf.columns[~res_subdf.columns.str.contains("^.*?bias.*?$|^.*?rmse.*?$|^rr.*?$|^var|^design$")].tolist()
@@ -244,6 +250,7 @@ def interference_bias_rmse_rr_vs_enum(
             axs[0][i].set_xlabel("")
             axs[0][i].set_ylabel("% CR Bias", fontsize=16)
             axs[0][i].tick_params(axis='y', which='major', labelsize=16)
+            axs[0][i].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
             axs[0][i].get_legend().set_visible(False)
 
             sns.lineplot(
@@ -277,6 +284,7 @@ def interference_bias_rmse_rr_vs_enum(
             axs[1][i].set_xlabel("")
             axs[1][i].set_ylabel("% CR Variance", fontsize=16)
             axs[1][i].tick_params(axis='y', which='major', labelsize=16)
+            axs[1][i].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
             axs[1][i].get_legend().set_visible(False)
 
             sns.lineplot(
@@ -310,27 +318,20 @@ def interference_bias_rmse_rr_vs_enum(
             axs[2][i].set_xlabel("M", fontsize=16)
             axs[2][i].set_ylabel("Rejection Rate", fontsize=16)
             axs[2][i].tick_params(axis='both', which='major', labelsize=16)
-            axs[2][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
+            axs[2][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 3), useMathText=True)
+            axs[2][i].xaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
             axs[2][i].get_legend().set_visible(False)
-
-            # if i == len(n_accepts) - 1:
-            #     axs[0][i].get_legend().remove()
-            #     axs[1][i].get_legend().remove()
-            #     axs[2][i].legend(bbox_to_anchor=(0.3, -0.2), fontsize=16)
-            # else:
-            #     axs[0][i].get_legend().remove()
-            #     axs[1][i].get_legend().remove()
-            #     axs[2][i].get_legend().remove()
         
         handles, labels = axs[2][i].get_legend_handles_labels()
         ncol = 1
-        bbox_to_anchor = (0.3, -0.2)
+        bbox_to_anchor = (0.5, -0.1)
         fig.legend(
             handles,
             labels,
             title=None,
             fontsize=16,
             bbox_to_anchor=bbox_to_anchor,
+            loc="lower center",
             ncol=ncol,
             edgecolor="black",
         )
@@ -477,6 +478,7 @@ if __name__ == "__main__":
         b_weights=args.w1,
         i_weights=args.w2,
         tau_size=args.tau_size,
+        mirror_type=args.mirror_type,
         res_dir=out_dir / dgp_subdir,
         fig_dir=out_dir / dgp_subdir
     )
