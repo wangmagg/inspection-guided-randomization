@@ -1,7 +1,7 @@
-if (!require("tidyverse")) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-if (!require("quickblock")) install.packages("quickblock", repos = "http://cran.us.r-project.org")
-if (!require("optparse")) install.packages("optparse", repos = "http://cran.us.r-project.org")
-if (!require("roxygen2")) install.packages("roxygen2", repos = "http://cran.us.r-project.org")
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("quickblock")) install.packages("quickblock")
+if (!require("optparse")) install.packages("optparse")
+if (!require("roxygen2")) install.packages("roxygen2")
 
 suppressPackageStartupMessages(library(tibble))
 suppressPackageStartupMessages(library(quickblock))
