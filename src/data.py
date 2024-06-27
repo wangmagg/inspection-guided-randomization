@@ -80,16 +80,10 @@ def gen_kenya_network(
     for coords in set_coords:
         sch_coords_0 = rng.choice(np.linspace(coords[0] - coords_range, coords[0] + coords_range, 200), n_sch_per_set, replace=False)
         sch_coords_1 = rng.choice(np.linspace(coords[1] - coords_range, coords[1] + coords_range, 200), n_sch_per_set, replace=False)
-        # sch_coords_0 = rng.uniform(coords[0] - coords_range, coords[0] + coords_range, n_sch_per_set)
-        # sch_coords_1 = rng.uniform(coords[1] - coords_range, coords[1] + coords_range, n_sch_per_set)
         sch_coords = np.vstack((sch_coords_0, sch_coords_1)).T
         all_sch_coords.append(sch_coords)
     all_sch_coords = np.vstack(all_sch_coords)
     
-    fig, ax = plt.subplots()
-    ax.scatter(all_sch_coords[:, 0], all_sch_coords[:, 1])
-    fig.savefig("sch_coords.png")
-
     n_sch = n_sch_per_set * len(set_coords)
     w_mat = np.ones((n_sch, n_sch))
     p_mat = np.ones((n_sch, n_sch))
