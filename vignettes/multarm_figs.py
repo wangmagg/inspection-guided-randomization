@@ -3,7 +3,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 from matplotlib import pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
+from matplotlib.ticker import FormatStrFormatter, MaxNLocator
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -320,7 +320,8 @@ def multarm_rmse_rr_vs_enum(
             hue_order=hue_order,
             errorbar=None,
         )
-        axs[0][i].set_title(f"m = {n_accept}")
+        axs[0][i].set_title(f"m = {n_accept}", fontsize=16)
+        axs[0][i].set_xlabel("")
         axs[0][i].set_ylabel("% CR RMSE", fontsize=16)
         axs[0][i].tick_params(axis='y', which='major', labelsize=16)
 
@@ -353,9 +354,11 @@ def multarm_rmse_rr_vs_enum(
             hue_order=hue_order,
             errorbar=None,
         )
+        axs[1][i].set_xlabel("M", fontsize=16)
         axs[1][i].set_ylabel("Rejection Rate", fontsize=16)
         axs[1][i].tick_params(axis='both', which='major', labelsize=16)
         axs[1][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
+        axs[1][i].xaxis.set_major_locator(MaxNLocator(integer=True, nbins=5))
 
         if i == len(n_accepts) - 1:
             axs[0][i].get_legend().remove()

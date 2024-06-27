@@ -98,9 +98,8 @@ def InvMinEuclidDist(z_pool, D):
         Z_diff_mask = np.matmul(z.T, 1 - z) + np.matmul((1 - z).T, z)
 
         # calculate minimum pairwise Euclidean distance between units assigned to different arms
+        # and take inverse
         D_diff_z = D[Z_diff_mask.astype(bool)]
-
-        # take inverse
         min_D[i] = 1 / np.min(D_diff_z)
 
     return min_D

@@ -122,6 +122,11 @@ def interference_bias_rmse_rr_vs_weight(
     ax[1].get_legend().set_visible(False)
 
     # Rejection rate
+    cr_rr = res[res['design'] == 'CR']['rr']
+    ax[2].axhline(cr_rr.mean(), color=color_mapping("CR"), linewidth=3, label="CR")
+    for rr in cr_rr:
+        ax[2].axhline(rr, color=color_mapping("CR"), linewidth=1, alpha=0.5)
+
     sns.lineplot(
         data=res_igr,
         x="w_balance",
@@ -151,17 +156,13 @@ def interference_bias_rmse_rr_vs_weight(
         ax=ax[2],
         errorbar=None,
     )
-    cr_rr = res[res['design'] == 'CR']['rr']
-    ax[2].axhline(cr_rr.mean(), color=color_mapping("CR"), linewidth=3, label="CR")
-    for rr in cr_rr:
-        ax[2].axhline(rr, color=color_mapping("CR"), linewidth=1, alpha=0.5)
     ax[2].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
     ax[2].set_ylabel("Rejection Rate", fontsize=18)
     ax[2].tick_params(axis="x", labelsize=16)
     ax[2].tick_params(axis="y", labelsize=16)
     ax[2].get_legend().set_visible(False)
     
-    handles, labels = ax[0].get_legend_handles_labels()
+    handles, labels = ax[2].get_legend_handles_labels()
     ncol = 1
     bbox_to_anchor = (1.2, 0.5)
     fig.legend(
@@ -195,17 +196,6 @@ def interference_bias_rmse_rr_vs_enum(
                                     (res_df["design"] == "CR")) & 
                                     (res_df["tau_size"] == tau_size) &
                                     (res_df["mirror_type"] == mirror_type)].copy()
-        res_subdf["var"] = res_subdf["rmse"] - res_subdf["bias"]**2
-
-        iter_group_cols = res_subdf.columns[~res_subdf.columns.str.contains("^.*?bias.*?$|^.*?rmse.*?$|^rr.*?$|^var|^design$")].tolist()
-        res_subdf.sort_values(by=iter_group_cols, inplace=True)
-        res_subdf["perc_CR_var"] = (
-            res_subdf.groupby(iter_group_cols, dropna=False)
-            .apply(lambda x: perc_of_benchmark("CR", x, "var"))
-            .reset_index(drop=True)
-            .sort_index()
-            .values
-        )
 
         n_accepts = np.sort(res_df["n_accept"].unique())
         fig, axs = plt.subplots(3, len(n_accepts), figsize=(6*len(n_accepts), 18), sharey='row', sharex='all')

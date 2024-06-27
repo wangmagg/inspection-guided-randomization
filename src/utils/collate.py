@@ -21,7 +21,7 @@ def collect_res_csvs(save_dir, bench_design="CR", variance=False):
     if variance:
         var_cols = []
         for (bias_col, rmse_col) in zip(bias_cols, rmse_cols):
-            var = res[rmse_col] - res[bias_col] ** 2
+            var = res[rmse_col]**2 - res[bias_col] ** 2
             if len(bias_col.split("_")) == 2:
                 var_col = f"var_{bias_col.split('_')[1]}"
             else:
