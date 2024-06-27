@@ -89,7 +89,7 @@ def FracExpo(z_pool, A, q, cluster_lbls=None):
 
     return frac_expo
 
-def InvEuclidDist(z_pool, D):
+def InvMinEuclidDist(z_pool, D):
     min_D = np.zeros(z_pool.shape[0])
     for i, z in tqdm(enumerate(z_pool), total=z_pool.shape[0]):
         z = np.expand_dims(z, axis=0)
@@ -113,8 +113,8 @@ def get_metric(metric_name):
         metric_fn = MaxMahalanobis
     elif metric_name == "FracExpo":
         metric_fn = FracExpo
-    elif metric_name == "InvEuclidDist":
-        metric_fn = InvEuclidDist
+    elif metric_name == "InvMinEuclidDist":
+        metric_fn = InvMinEuclidDist
     else:
         raise ValueError(f"Unknown metric: {metric_name}")
     return metric_fn

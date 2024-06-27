@@ -294,4 +294,4 @@ if __name__ == "__main__":
         plt.close(or_fig)
 
         # Save estimation and inference results (do save for each fitness fn to track progress)
-        collect_res_csvs(save_dir_data.parent, n_arms=len(args.rhos), bench_design="GFR")
+        collect_res_csvs(save_dir_data.parent, bench_design="GFR")

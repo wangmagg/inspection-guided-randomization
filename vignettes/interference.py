@@ -51,7 +51,7 @@ def interference_config():
     parser.add_argument("--n-accept", type=int, default=500)
     parser.add_argument("--mirror-type", type=str, default="all")
     parser.add_argument("--balance_metric", type=str, nargs="+", default=["MaxMahalanobis"])
-    parser.add_argument("--interference_metric", type=str, nargs="+", default=["FracExpo", "InvEuclidDist"])
+    parser.add_argument("--interference_metric", type=str, nargs="+", default=["FracExpo", "InvMinEuclidDist"])
     parser.add_argument("--agg", type=str, default="LinComb")
     parser.add_argument("--w1", type=float, nargs="+", default=[0.25, 0.5, 0.75, 0, 0.125, 0.375, 0.625, 0.875, 1])
     parser.add_argument("--w2", type=float, nargs="+", default=[0.75, 0.5, 0.25, 1, 0.875, 0.625, 0.375, 0.125, 0])
@@ -290,7 +290,7 @@ if __name__ == "__main__":
     kwargs["b_metric"]["cluster_lbls"] = kwargs["exposure"]["cluster_lbls"]
     i_metric_kwargs_opts = {
         "FracExpo": kwargs["exposure"],
-        "InvEuclidDist":  {"D": D}
+        "InvMinEuclidDist":  {"D": D}
     }
     for b_metric_name, i_metric_name in product(args.balance_metric, args.interference_metric):
         b_metric = get_metric(b_metric_name)
@@ -427,7 +427,7 @@ if __name__ == "__main__":
             plt.close(dt_grid.figure) 
 
             # Collect estimation and inference results
-            collect_res_csvs(save_dir_data.parent, bench_design="CR", n_arms=2)
+            collect_res_csvs(save_dir_data.parent, bench_design="CR", variance=True)
 
         # Adjust axis limits to be the same for all desiderata tradeoff grids
         adjust_joint_grid_limits(dt_grids, save_dir_res / "igr_checks", dt_grid_save_fnames)

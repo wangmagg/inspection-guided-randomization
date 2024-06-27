@@ -36,10 +36,10 @@ def color_mapping(design, metric_lbl=None):
         return "seagreen"
     
     # IGR with aggregated fitness fn, including a distance metric, are purple scheme
-    if re.match(pattern=r"^IGR - (.*?)InvEuclidDist$", string=match_str) is not None:
+    if re.match(pattern=r"^IGR - (.*?)InvMinEuclidDist$", string=match_str) is not None:
         # return "thistle"
         return "orchid"
-    if re.match(pattern=r"^IGRg - (.*?)InvEuclidDist$", string=match_str) is not None:
+    if re.match(pattern=r"^IGRg - (.*?)InvMinEuclidDist$", string=match_str) is not None:
         # return "mediumorchid"
         return "purple"
 

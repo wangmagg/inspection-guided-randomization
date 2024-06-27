@@ -187,16 +187,11 @@ def interference_bias_rmse_rr_vs_enum(
     fig_dir
 ):
     res_df = pd.read_csv(res_dir / "res_collated.csv")
-
-    # all_ymins = []
-    # all_ymaxs = []
-    # all_figs = []
-    # all_axs = []
     for (b_w, i_w) in zip(b_weights, i_weights):
         res_subdf = res_df[((res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*FracExpo")|
                                     (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*FracExpo") |
-                                    (res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvEuclidDist") |
-                                    (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvEuclidDist") |
+                                    (res_df["design"] == f"IGR - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvMinEuclidDist") |
+                                    (res_df["design"] == f"IGRg - {b_w:.2f}*MaxMahalanobis + {i_w:.2f}*InvMinEuclidDist") |
                                     (res_df["design"] == "CR")) & 
                                     (res_df["tau_size"] == tau_size) &
                                     (res_df["mirror_type"] == mirror_type)].copy()
@@ -453,7 +448,7 @@ if __name__ == "__main__":
     parser.add_argument("--data-iter", type=int, default=0)
 
     parser.add_argument("--balance-metric", type=str, nargs="+", default=["MaxMahalanobis"])
-    parser.add_argument("--interference-metric", type=str, nargs="+", default=["FracExpo", "InvEuclidDist"])
+    parser.add_argument("--interference-metric", type=str, nargs="+", default=["FracExpo", "InvMinEuclidDist"])
     parser.add_argument("--w1", type=float, nargs="+", default=[0.25, 0.5, 0.75])
     parser.add_argument("--w2", type=float, nargs="+", default=[0.75, 0.5, 0.25])
 

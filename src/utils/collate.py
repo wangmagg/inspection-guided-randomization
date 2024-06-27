@@ -7,7 +7,7 @@ def perc_of_benchmark(bench_design, group, col):
     perc_reduc = group[col].apply(lambda x: x / ref_value * 100)
     return perc_reduc
 
-def collect_res_csvs(save_dir, bench_design="CR", n_arms=2):
+def collect_res_csvs(save_dir, bench_design="CR", variance=False):
     res_dfs = []
     res_df_files = Path(save_dir).rglob("*res.csv")
     for res_df_file in res_df_files:
@@ -17,6 +17,17 @@ def collect_res_csvs(save_dir, bench_design="CR", n_arms=2):
     bias_cols = [col for col in res.columns if col.startswith("bias")]
     rmse_cols = [col for col in res.columns if col.startswith("rmse")]
     rr_cols = [col for col in res.columns if col.startswith("rr")]
+
+    if variance:
+        var_cols = []
+        for (bias_col, rmse_col) in zip(bias_cols, rmse_cols):
+            var = res[rmse_col] - res[bias_col] ** 2
+            if len(bias_col.split("_")) == 2:
+                var_col = f"var_{bias_col.split('_')[1]}"
+            else:
+                var_col = f"var"
+            res[var_col] = var
+            var_cols.append(var_col)
 
     group_cols = res.columns[~res.columns.str.contains("^bias.*?$|^rmse.*?$|^var.*?$|^rr.*?$|^design$|^data_iter")]
     design_group_cols = group_cols.tolist() + ["design"]
@@ -30,6 +41,10 @@ def collect_res_csvs(save_dir, bench_design="CR", n_arms=2):
             res[f"perc_{bench_design}_{bias_col}"] = perc_of_benchmark(bench_design, res, bias_col)
         for rmse_col in rmse_cols:
             res[f"perc_{bench_design}_{rmse_col}"] = perc_of_benchmark(bench_design, res, rmse_col)
+        if variance:
+            for var_col in var_cols:
+                res[f"perc_{bench_design}_{var_col}"] = perc_of_benchmark(bench_design, res, var_col)
+
     else:
         for bias_col in bias_cols:
             res[f"perc_{bench_design}_{bias_col}"] = (
@@ -43,6 +58,13 @@ def collect_res_csvs(save_dir, bench_design="CR", n_arms=2):
                 .reset_index(drop=True)
                 .sort_index().values
             )
+        if variance:
+            for var_col in var_cols:
+                res[f"perc_{bench_design}_{var_col}"] = (
+                    res_grouped.apply(lambda x: perc_of_benchmark(bench_design, x, var_col))
+                    .reset_index(drop=True)
+                    .sort_index().values
+                )
     res.to_csv(save_dir / "res_collated.csv", index=False)
 
     agg_dict = {}
@@ -52,6 +74,10 @@ def collect_res_csvs(save_dir, bench_design="CR", n_arms=2):
     for rmse_col in rmse_cols:
         agg_dict[rmse_col] = ['mean', 'std']
         agg_dict[f"perc_{bench_design}_{rmse_col}"] = ['mean', 'std']
+    if variance:
+        for var_col in var_cols:
+            agg_dict[var_col] = ['mean', 'std']
+            agg_dict[f"perc_{bench_design}_{var_col}"] = ['mean', 'std']
     for rr_col in rr_cols:
         agg_dict[rr_col] = ['mean', 'std']
 

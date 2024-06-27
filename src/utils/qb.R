@@ -54,12 +54,6 @@ sample_mult_z <- function(
     z_pool <- t(z_pool - 1)
 
     # Save treatment allocations to file
-    # save_fname <- sprintf("%d_QB_z.csv", data_iter)
-    # save_blocks_fname <- sprintf("%d_QB_blocks.csv", data_iter)
-    # save_subdir <- file.path(data_dir, "QB")
-    # z_pool_path <- file.path(save_dir, save_fname)
-    # qb_blocks_path <- file.path(save_dir, save_blocks_fname)
-
     write.csv(z_pool, z_path, row.names = FALSE)
     write.csv(qb_blocks, blocks_path, row.names = FALSE)
 }

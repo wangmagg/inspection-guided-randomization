@@ -8,6 +8,24 @@ declare -a mirror_arr=("all" "good")
 declare -a gamma_arr=(0.25 0.75)
 
 
+for iter in "${iter_arr[@]}"
+do
+    for enum in "${enum_arr[@]}"
+    do
+        for accept in "${accept_arr[@]}"
+        do 
+            python3 -m vignettes.interference \
+                --data-iter $iter \
+                --n-enum $enum \
+                --n-accept $accept \
+                --mirror-type all \
+                --tau-size 0.3 \
+                --gamma 0.5 \
+                --w1 0.25 0.5 0.75 \
+                --w2 0.75 0.5 0.25 
+        done
+    done
+done
 
 for iter in "${iter_arr[@]}"
 do 
@@ -19,8 +37,8 @@ do
             --n-accept 500 \
             --mirror-type all \
             --gamma $gamma \
-            --w1 0.5 \
-            --w2 0.5 
+            --w1 0.25 0.5 0.75\
+            --w2 0.75 0.5 0.25
     done
 done
 

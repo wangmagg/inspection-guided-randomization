@@ -338,5 +338,5 @@ if __name__ == "__main__":
         plt.close(or_fig)
 
         # Save estimation and inference results 
-        collect_res_csvs(save_dir_data.parent, n_arms=args.n_arms - 1)
+        collect_res_csvs(save_dir_data.parent)
         

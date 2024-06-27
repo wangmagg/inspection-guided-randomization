@@ -57,9 +57,9 @@ def discriminatory_power(
         line_kws={"linewidth": 1.5},
         stat="count",
         common_norm=False,
-        ax=ax,
-        log_scale=True,
+        ax=ax
     )
+    ax.set_xscale("log")
     vline_clr = color_mapping("IGR", fitness_lbl)
     ha_opts = ["left", "right"]
     pad_opts = [1.04, 0.96]
