@@ -6,9 +6,9 @@ from pathlib import Path
 import pickle
 import seaborn as sns
 
-from src.utils.aesthetics import color_mapping, get_palette, get_hue_order, format_ax, adjust_joint_grid_limits
+from src.utils.aesthetics import color_mapping, get_palette, get_hue_order, format_ax, adjust_joint_grid_limits, setup_fig
+from src.igr_checks import discriminatory_power, overrestriction
 from src.aggregators import LinComb
-from src.utils.collate import perc_of_benchmark
 
 def _parse_design(design):
     design_prefix = design.split(" - ")[0]
@@ -451,6 +451,7 @@ if __name__ == "__main__":
     accept_subdir = f"n_accept-{args.n_accept}"
     mirror_subdir = f"mirror_type-{args.mirror_type}"
 
+    # Plot bias, RMSE, and rejection rate versus weight applied to balance metric
     interference_bias_rmse_rr_vs_weight(
         n_enum=args.n_enum,
         n_accept=args.n_accept,
@@ -459,6 +460,8 @@ if __name__ == "__main__":
         res_dir=out_dir / dgp_subdir,
         fig_dir=out_dir / dgp_subdir,
     )
+
+    # Plot bias, RMSE, and rejection rate versus number of enumerated allocations
     interference_bias_rmse_rr_vs_enum(
         b_weights=args.w1,
         i_weights=args.w2,
@@ -476,6 +479,7 @@ if __name__ == "__main__":
     with open(out_dir / dgp_subdir / f"{args.data_iter}" / tau_subdir / "tau_true.pkl", "rb") as f:
         tau_true = pickle.load(f)
 
+    # Scatter plot of error in estimate versus fitness score
     interference_err_scatter(
         b_metrics=args.balance_metric,
         i_metrics=args.interference_metric,
@@ -487,3 +491,44 @@ if __name__ == "__main__":
         res_dir=res_dir,
         fig_dir=fig_dir
     )
+
+    # Replot IGR checks with only the specified weights
+    for b_metric in args.balance_metric:
+        for i_metric in args.interference_metric:
+            dp_fig, dp_axs = setup_fig(ncols = len(args.w1), sharex=False, sharey=True)
+            or_fig, or_axs = setup_fig(ncols = len(args.w1), sharex=False, sharey=True)
+
+            for i, (w1, w2) in enumerate(zip(args.w1, args.w2)):
+                fitness_lbl = f"{w1:.2f}*{b_metric} + {w2:.2f}*{i_metric}"
+
+                # IGR check 1: Discriminatory power
+                with open(res_dir / 'IGR' / f"{b_metric} + {i_metric}_scores_pool.pkl", "rb") as f:
+                    scores_pool_igr = pickle.load(f)
+                with open(res_dir / 'IGRg' / f"{b_metric} + {i_metric}_scores_pool.pkl", "rb") as f:
+                    scores_pool_igrg = pickle.load(f)
+                discriminatory_power(
+                    fitness_lbl=fitness_lbl,
+                    scores_1=scores_pool_igr[0], scores_1_g=scores_pool_igrg[0],
+                    scores_2=scores_pool_igr[1], scores_2_g=scores_pool_igrg[1],
+                    n_accept=args.n_accept,
+                    agg_fn= LinComb, 
+                    agg_kwargs={'w1': w1, 'w2': w2},
+                    ax=dp_axs[i]
+                )
+
+                # IGR check 2: Overrestriction
+                with open (res_dir / 'CR' / "z.pkl", "rb") as f:
+                    z_accepted_cr = pickle.load(f)
+                with open(res_dir / 'IGR' / f"{fitness_lbl}_z.pkl", "rb") as f:
+                    z_accepted_igr = pickle.load(f)
+                with open(res_dir / 'IGRg' / f"{fitness_lbl}_z.pkl", "rb") as f:
+                    z_accepted_igrg = pickle.load(f)
+                overrestriction(
+                    fitness_lbl = fitness_lbl,
+                    design_to_z_accepted={"CR": z_accepted_cr, 
+                                         "IGR": z_accepted_igr, 
+                                         "IGRg": z_accepted_igrg},
+                    ax=or_axs[i]
+                )
+            dp_fig.savefig(fig_dir / f"{b_metric} + {i_metric}_discriminatory_power.svg", bbox_inches="tight", transparent=True)
+            or_fig.savefig(fig_dir / f"{b_metric} + {i_metric}_overrestriction.svg", bbox_inches="tight", transparent=True)
