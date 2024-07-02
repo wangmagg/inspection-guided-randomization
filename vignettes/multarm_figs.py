@@ -11,7 +11,7 @@ import pickle
 import seaborn as sns
 
 from src.metrics import SMD, SignedMaxAbsSMD
-from src.utils.aesthetics import get_palette, get_hue_order
+from src.aesthetics import get_palette, get_hue_order
 
 
 def multarm_bal_boxplot(

@@ -6,7 +6,7 @@ from pathlib import Path
 import pickle
 import seaborn as sns
 
-from src.utils.aesthetics import color_mapping, get_palette, get_hue_order, format_ax, adjust_joint_grid_limits, setup_fig
+from src.aesthetics import color_mapping, get_palette, get_hue_order, format_ax, adjust_joint_grid_limits, setup_fig
 from src.igr_checks import discriminatory_power, overrestriction
 from src.aggregators import LinComb
 
@@ -88,7 +88,7 @@ def interference_bias_rmse_rr_vs_weight(
     sns.lineplot(
         data=res_igr,
         x="w_balance",
-        y="perc_CR_rmse",
+        y="perc_CR_var",
         hue="design_no_weights",
         linewidth=1,
         alpha=0.5,
@@ -102,7 +102,7 @@ def interference_bias_rmse_rr_vs_weight(
     sns.lineplot(
         data=res_igr,
         x="w_balance",
-        y="perc_CR_rmse",
+        y="perc_CR_var",
         hue="design_no_weights",
         marker="o",
         markersize=4,
@@ -113,9 +113,8 @@ def interference_bias_rmse_rr_vs_weight(
         ax = ax[1],
         errorbar=None
     )
-    # ax[1].axhline(100, color='black', linestyle='--', linewidth=1, label="CR")
     ax[1].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
-    ax[1].set_ylabel("% CR RMSE", fontsize=18)
+    ax[1].set_ylabel("% CR Variance", fontsize=18)
     ax[1].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
     ax[1].tick_params(axis="x", labelsize=16)
     ax[1].tick_params(axis="y", labelsize=16)

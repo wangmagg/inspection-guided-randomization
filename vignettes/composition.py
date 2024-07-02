@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-import glob
 from itertools import combinations
 from joblib import Parallel, delayed
 import numpy as np
@@ -11,19 +10,19 @@ import pandas as pd
 import pickle
 from pathlib import Path
 
-from src.data import gen_composition_data, get_composition_y_obs
 from src.estimators import (
     get_tau_true_composition,
     diff_in_means_mult_arm, 
     get_pval_mult_arm,
 )
+from src.aesthetics import setup_fig
 from src.igr import igr_paired_gfr_enumeration, igr_restriction
 from src.igr_checks import discriminatory_power, overrestriction
+from src.igr_enhancements import get_genetic_kwargs
 from src.metrics import get_metric
 
-from src.utils.genetic_algorithms import get_genetic_kwargs
-from src.utils.collate import collect_res_csvs
-from src.utils.aesthetics import setup_fig
+from vignettes.data import gen_composition_data, get_composition_y_obs
+from vignettes.collate import collect_res_csvs
 
 def composition_config():
     parser = ArgumentParser()
@@ -147,6 +146,7 @@ def run_trial_and_analyze(
         save_dir, data_iter, 
         metric_lbl=None, 
         subdir_dict=None):
+    
     save_dir_design = save_dir / design
     if metric_lbl is not None:
         tau_hat_path = save_dir_design / f"{metric_lbl}_tau_hat.pkl"

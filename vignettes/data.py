@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pickle
 import networkx as nx
 from scipy.spatial.distance import pdist, squareform
 

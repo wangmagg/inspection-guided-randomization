@@ -1,11 +1,8 @@
 import numpy as np
 import time
 from tqdm import tqdm
-from typing import Optional
 
-from src.utils.genetic_algorithms import run_genetic_alg
-from src.utils.mirror_allocations import add_mirrors
-
+from src.igr_enhancements import run_genetic_alg, add_mirrors
 
 def igr_enumeration(n, n_arms, n_enum, seed=42):
     rng = np.random.default_rng(seed)

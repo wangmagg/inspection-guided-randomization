@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.utils.aesthetics import (
+from src.aesthetics import (
     get_palette,
     get_two_tone_palette,
     color_mapping,

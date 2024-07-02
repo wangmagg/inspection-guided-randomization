@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-import glob
 from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
@@ -12,7 +11,7 @@ from pathlib import Path
 import subprocess
 from tqdm import tqdm
 
-from src.data import gen_multarm_data, get_multarm_y_obs
+from src.aesthetics import setup_fig
 from src.estimators import (
     get_tau_true, 
     diff_in_means_mult_arm, 
@@ -22,11 +21,11 @@ from src.estimators import (
 )
 from src.igr import igr_enumeration, igr_restriction
 from src.igr_checks import discriminatory_power, overrestriction
+from src.igr_enhancements import get_genetic_kwargs
 from src.metrics import get_metric
 
-from src.utils.aesthetics import setup_fig
-from src.utils.collate import collect_res_csvs
-from src.utils.genetic_algorithms import get_genetic_kwargs
+from vignettes.data import gen_multarm_data, get_multarm_y_obs
+from vignettes.collate import collect_res_csvs
 
 def multarm_config():
     parser = ArgumentParser()

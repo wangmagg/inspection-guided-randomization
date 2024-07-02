@@ -11,8 +11,7 @@ import pickle
 from pathlib import Path
 from tqdm import tqdm
 
-
-from src.data import gen_kenya_data, gen_kenya_network, get_kenya_sch_y_obs
+from src.aesthetics import setup_fig, adjust_joint_grid_limits
 from src.estimators import get_tau_true, diff_in_means, get_pval
 from src.igr import igr_enumeration, igr_restriction
 from src.igr_checks import (
@@ -21,13 +20,12 @@ from src.igr_checks import (
     desiderata_tradeoffs, 
     desiderata_tradeoffs_pool, 
 )
-
+from src.igr_enhancements import get_genetic_kwargs
 from src.metrics import get_metric
 from src.aggregators import get_agg
 
-from src.utils.genetic_algorithms import get_genetic_kwargs
-from src.utils.collate import collect_res_csvs
-from src.utils.aesthetics import setup_fig, adjust_joint_grid_limits
+from vignettes.data import gen_kenya_data, gen_kenya_network, get_kenya_sch_y_obs
+from vignettes.collate import collect_res_csvs
 
 def interference_config():
     parser = ArgumentParser()
