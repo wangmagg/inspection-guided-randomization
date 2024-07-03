@@ -28,33 +28,41 @@ conda activate cbr-env
 
 ## File Structure
     .
-    ├── params                  # Files with values for fixed input parameters
-    ├── scripts                 # Bash scripts for running simulations
-    ├── src                     # Source files
-      ├── analysis              # Functions for estimation and inference
-      ├── design                # Functions for experimental designs
-      ├── models                # Functions for data generation
-      ├── sims                  # Simulations of three illustrative IGR use cases
-      ├── visualization         # Functions to plot results from simulations
+    ├── scripts                 # Bash scripts for running simulations with different parameter settings
+    ├── src                     
+      ├── R                     # Contains Rscript for threshold blocking
+      ├── aesthetics.py         # Functions for figure aesthetics 
+      ├── aggregators.py        # Functions for aggregating inspection metrics
+      ├── estimators.py         # Functions for estimating treatment effects
+      ├── igr_checks.py         # Functions for making Evaluation & Adaptation plots
+      ├── igr_enhancements.py   # Functions for genetic algorithms and adding mirror allocations
+      ├── igr.py                # Functions for IGR enumeration, restriction, and randomization
+      ├── metrics.py            # Functions for inspection metrics
+    ├── vignettes               
+      ├── collate.py            # Functions for collating results
+      ├── composition_figs.py   # Generates figures for Vignette 2 
+      ├── composition.py        # Runs Vignette 2
+      ├── data.py               # Functions for generating data for each of the vignettes
+      ├── interference_figs.py  # Generates figures for Vignette 3
+      ├── interference.py       # Runs Vignette 3
+      ├── multarm_figs.py       # Generates figures for Vignette 1
+      ├── multarm.py            # Runs Vignette 1
     └── README.md
 
 ## Usage
-### Running Vignette Simulations
+### Running Vignettes
 #### 1. Multi-arm Experiments ####
 
 In a multi-arm experiment, we simultaneously evaluate multiple interventions and make pairwise comparisons between arms to estimate treatment effects. A well-designed experiment in this setting has covariates balanced across all pairs of arms that will be compared in the analysis phase of the experiment. To use IGR, we construct and apply multi-arm balance inspection metrics.
 
 Our multi-arm experiment simulation is modeled based on an educational intervention study conducted to test how different types of feedback on class assignments affect students’ grades. We examine the allocations that are accepted under a CBR design scheme and compare them with allocations accepted under a naive complete randomization design and under a threshold blocking design (Higgens et al, 2016). 
 
-For convenience, we provide bash scripts that run the experiment for multiple data replicates across several different parameter settings (number of arms, number of individuals per arm, number of candidate allocations generated): <br />
+For convenience, we provide bash scripts that run the experiment for multiple data replicates across several different parameter settings (number of arms, number of candidate allocations generated, number of allocations accepted): <br />
 ```
-bash scripts/run_multarm_sims.sh --make-data
-bash scripts/run_multarm_sims.sh --run-trial
+bash scripts/multarm.sh
 ```
 
-Running these scripts creates: </br>
-  1. ```output/mult-arm``` directory that stores a pickled object for each simulated experiment
-  2. ```res/mult-arm``` directory that stores CSV result files
+Running this script creates a ```res/vig1_multarm``` directory that stores results and figures.
 
 #### 2. Group Formation Experiments ####
 
@@ -65,14 +73,10 @@ of the intervention can depend on the male-to-female ratio. We use a similar dat
 
 For convenience, we provide bash scripts that run the experiment for multiple data replicates across several different parameter settings (number of individuals per arm, number of candidate allocations generated): <br />
 ```
-bash scripts/run_composition_sims.sh --make-data
-bash scripts/run_composition_sims.sh --run-trial
+bash scripts/composition.sh
 ```
 
-Running these scripts creates: 
-
-1. ```output/composition```: directory that stores a pickled object for each simulated experiment
-2. ```res/composition```: directory that stores CSV result files.
+Running these scripts creates a ```res/vig2_composition``` directory that stores results and figures.
 
 #### 3. Experiments with Network Interference #
 
@@ -83,21 +87,8 @@ learned and practiced verbal and physical skills for resisting sexual assault. T
 
 For convenience, we provide bash scripts that run the experiment for multiple data replicates across several different parameter settings (number of individuals per arm, number of candidate allocations generated): <br />
 ```
-bash scripts/run_kenya_sims.sh --make-data
-bash scripts/run_kenya_sims.sh --run-trial
+bash scripts/interference.sh 
 ```
-Running these scripts creates: 
-
-1. ```output/composition```: directory that stores a pickled object for each simulated experiment
-2. ```res/composition```: directory that stores CSV result files.
-
-### Visualizations
-
-To generate plots of the simulation results, run the following bash scripts:
-```
-bash scripts/run_multarm_visualization.sh
-bash scripts/run_composition_visualization.sh
-bash scripts/run_kenya_visualization.sh
-```
+Running these scripts creates a ```res/vig3_interference``` directory that stores results and figures.
 
 
