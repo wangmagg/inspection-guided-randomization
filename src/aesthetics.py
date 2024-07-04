@@ -176,7 +176,7 @@ def format_ax(ax: plt.Axes, lbl_size:int=16):
     return ax
 
 
-def adjust_joint_grid_limits(jnt_grids: List[sns.JointGrid], save_dir: Path, save_fnames: List[str]):
+def adjust_joint_grid_limits(jnt_grids: List[sns.JointGrid], adjust_x=True, adjust_y=True, save_dir: Path=None, save_fnames: List[str]=None):
     """
     Adjust joint grid limits for multiple joint grids and save figures
     Args:
@@ -188,7 +188,30 @@ def adjust_joint_grid_limits(jnt_grids: List[sns.JointGrid], save_dir: Path, sav
     xmax = np.max([jnt_grid.ax_joint.get_xlim()[1] for jnt_grid in jnt_grids])
     y_max = np.max([jnt_grid.ax_joint.get_ylim()[1] for jnt_grid in jnt_grids])
     y_min = np.min([jnt_grid.ax_joint.get_ylim()[0] for jnt_grid in jnt_grids])
+    # if save_dir is None:
+    #     for jnt_grid in jnt_grids:
+    #         jnt_grid.ax_joint.set_xlim(xmin, xmax)
+    #         jnt_grid.ax_joint.set_ylim(y_min, y_max)
+    # else:
+    for i, jnt_grid in enumerate(jnt_grids):
+        if adjust_x:
+            jnt_grid.ax_joint.set_xlim(xmin, xmax)
+        if adjust_y:
+            jnt_grid.ax_joint.set_ylim(y_min, y_max)
+
+        if save_dir is not None:
+            save_fname = save_fnames[i]
+            jnt_grid.savefig(save_dir / save_fname, transparent=True, bbox_inches="tight")
+            plt.close()
+
+def save_joint_grids(jnt_grids: List[sns.JointGrid], save_dir: Path, save_fnames: List[str]):
+    """
+    Save joint grids as figures
+    Args:
+        - jnt_grids: List of seaborn JointGrid objects
+        - save_dir: Directory to save figures to
+        - save_fnames: List of filenames to save
+    """
     for jnt_grid, save_fname in zip(jnt_grids, save_fnames):
-        jnt_grid.ax_joint.set_xlim(xmin, xmax)
-        jnt_grid.ax_joint.set_ylim(y_min, y_max)
         jnt_grid.savefig(save_dir / save_fname, transparent=True, bbox_inches="tight")
+        plt.close()

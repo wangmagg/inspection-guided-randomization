@@ -11,7 +11,7 @@ import pickle
 from pathlib import Path
 from tqdm import tqdm
 
-from src.aesthetics import setup_fig, adjust_joint_grid_limits
+from src.aesthetics import setup_fig, adjust_joint_grid_limits, save_joint_grids
 from src.estimators import get_tau_true, diff_in_means, get_pval
 from src.igr import igr_enumeration, igr_restriction
 from src.igr_checks import (
@@ -67,7 +67,7 @@ def interference_config():
 
     args = parser.parse_args()
     
-    # Mean and coordinates of each settlement
+    # Define covariate means and lat/long centroid coordinates of each settlement
     set_mus = np.array(
         [[0.25, 0.25],
         [0, 0.75],
@@ -82,6 +82,8 @@ def interference_config():
         [36.8909401, -1.2503642],
         [36.9025814, -1.2482996]]
     )
+
+    # Set up  kwargs 
     data_kwargs = {"set_mus": set_mus, "set_coords": set_coords}
     b_metric_kwargs = {"n_arms": 2, "comps": [[0, 1]]}
     exposure_kwargs = {"q": args.q}
@@ -103,6 +105,7 @@ def interference_config():
         "save": subdir_dict
     }
 
+    # Define and create save directories
     save_dir_dgp = Path(args.out_dir) / f"gamma-{args.gamma}"
     save_subdirs = [f"{k}-{v}" for k, v in subdir_dict.items()]
 
@@ -114,24 +117,45 @@ def interference_config():
     return args, kwargs, save_dir_data, save_dir_res
 
 def restriction(
-    design,
-    z_pool,
-    n_accept,
-    save_dir,
-    mirror_type="all",
-    fitness_lbl=None, 
-    b_metric=None,
-    i_metric=None,
-    agg_fn=None,
-    b_metric_kwargs=None,
-    i_metric_kwargs=None,
-    genetic_kwargs=None,
-    agg_kwargs=None
-):
+    design: str,
+    z_pool: np.ndarray,
+    n_accept: int,
+    save_dir: Path,
+    mirror_type: str="all",
+    fitness_lbl: str=None, 
+    b_metric: callable=None,
+    i_metric: callable=None,
+    agg_fn: callable=None,
+    b_metric_kwargs: dict={},
+    i_metric_kwargs: dict={}, 
+    genetic_kwargs: dict={},
+    agg_kwargs: dict={}
+) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+    """
+    Restrict candidate pool of treatment allocations down 
+    to the set of accepted allocations
+
+    Args:
+        - design: name of design
+        - z_pool: candidate treatment allocation pool
+        - n_accept: number of treatment allocations to accept
+        - save_dir: directory to save results to 
+        - b_metric: balance metric
+        - i_metric: interference metric
+        - agg_fn: aggregation function for combining balance and interference metrics
+        - b_metric_kwargs: keyword arguments for balance metric
+        - i_metric_kwargs: keyword arguments for interference metric
+        - genetic_kwargs: keyword arguments for genetic algorithm
+        - mirror_kwargs: keyword arguments for mirror algorithm
+    """
+        
+    # Create save directory for design
     save_dir_design = save_dir / design
     if not save_dir_design.exists():
         save_dir_design.mkdir(parents=True)
 
+    # Define save paths for the accepted allocations, the scores for the accepted allocations,
+    # and the scores for the pool of candidate allocations
     save_path_scores_pool = save_dir_design / f"{b_metric.__name__} + {i_metric.__name__}_scores_pool.pkl"
     if design == "CR":
         save_path_z = save_dir_design / f"z.pkl"
@@ -142,6 +166,7 @@ def restriction(
 
     print(f"{design}_{fitness_lbl}: Restricting...")
 
+    # Load and return accepted allocations and scores if they already exist
     if save_path_z.exists() and save_path_scores.exists() and save_path_scores_pool.exists():
         print(f"{save_path_z.name} already exists, skipping restriction and loading existing...")
         with open(save_path_z, "rb") as f:
@@ -152,12 +177,14 @@ def restriction(
             scores_accepted = pickle.load(f)
         return z_accepted, scores_pool, scores_accepted
     
+    # Load scores for the pool of candidate allocations if they already exist
     if save_path_scores_pool.exists():
         with open(save_path_scores_pool, "rb") as f:
             scores_pool_1, scores_pool_2 = pickle.load(f)
     else:
         scores_pool_1, scores_pool_2 = None, None
 
+    # Run restriction
     z_accepted, scores_pool, scores_accepted = igr_restriction(
         z_pool,
         n_accept,
@@ -174,6 +201,9 @@ def restriction(
         agg_kwargs=agg_kwargs,
         genetic_kwargs=genetic_kwargs
     )
+
+    # Save and return the accepted allocations, the scores of the accepted allocations,
+    # and the scores of the pool of candidate allocations
     with open(save_path_z, "wb") as f:
         pickle.dump(z_accepted, f)
     with open(save_path_scores, "wb") as f:
@@ -185,18 +215,37 @@ def restriction(
     return z_accepted, scores_pool, scores_accepted
 
 def run_trial_and_analyze(
-        design, 
-        tau_true,
-        z_accepted, 
-        save_dir, 
-        data_iter, 
-        exposure_kwargs={},
-        fitness_lbl=None,
-        subdir_dict=None
-    ):
-    
-    save_dir_design = save_dir / design
+        design: str, 
+        tau_true: float,
+        z_accepted: np.ndarray, 
+        save_dir: Path, 
+        data_iter: int, 
+        exposure_kwargs: dict={},
+        fitness_lbl: str=None,
+        subdir_dict: dict={}
+    ) -> None:
+    """
+    "Run" a trial and get estimation and inference results
+    Args:
+        - design: name of design
+        - y: potential outcomes
+        - z_accepted: accepted treatment allocations
+        - comps: list of pairs of arms to compare
+        - save_dir: directory to save results to
+        - data_iter: data sample iteration number
+        - metric_lbl: label for metric
+        - subdir_dict: dictionary of subdirectory names,
+            which will be included in the CSV results file
+            to distinguish between runs of the same design under
+            different simulation parameter settings
+    """
 
+    # Create save directory for design
+    save_dir_design = save_dir / design
+    if not save_dir_design.exists():
+        save_dir_design.mkdir(parents=True)
+
+    # Define save paths for the estimated treatment effects and the bias/rmse/rr results
     if fitness_lbl is not None:
         tau_hat_path = save_dir_design / f"{fitness_lbl}_tau_hat.pkl"
         res_path = save_dir_design / f"{fitness_lbl}_res.csv"
@@ -204,6 +253,7 @@ def run_trial_and_analyze(
         tau_hat_path = save_dir_design / "tau_hat.pkl"
         res_path = save_dir_design / "res.csv"
 
+    # Load estimated effects and results CSV if they already exist
     if tau_hat_path.exists() and res_path.exists():
         print(f"{res_path.name} already exists, skipping estimation...")
         return
@@ -212,17 +262,24 @@ def run_trial_and_analyze(
             save_dir.mkdir()
         print(f"{data_iter}_{design}: Estimating...")
 
+        # Get mean observed outcomes at the school-level
         sch_y_obs_accepted = get_kenya_sch_y_obs(y_0, y_1, z_accepted, **exposure_kwargs)
+
+        # Get difference in means estimates
         tau_hat = np.array([diff_in_means(z, sch_y_obs) for z, sch_y_obs in zip(z_accepted, sch_y_obs_accepted)])
+
+        # Get p-values
         p_val = Parallel(n_jobs=-2, verbose=1)(delayed(get_pval)(z_accepted, sch_y_obs_accepted, idx) 
                                                for idx in tqdm(range(z_accepted.shape[0])))
-
+        
+        # Get bias, RMSE, and rejection rate
         if fitness_lbl is not None:
             design = f"{design} - {fitness_lbl}"
         bias = np.mean(tau_hat) - tau_true
         rmse = np.sqrt(np.mean((tau_hat - tau_true) ** 2))
         rr = np.mean(np.array(p_val) < 0.05)
 
+        # Save results
         res_dict = {
             "design": design,
             "data_iter": data_iter,
@@ -240,13 +297,13 @@ def run_trial_and_analyze(
 if __name__ == "__main__":
     args, kwargs, save_dir_data, save_dir_res = interference_config()
 
-    n_set = kwargs["data"]["set_mus"].shape[0]
-    n = args.n_stu_per_sch * args.n_sch_per_set * n_set
-    n_sch = args.n_sch_per_set * n_set
-    sch_sizes = np.repeat(args.n_stu_per_sch, n_sch)
-    beta = np.array(args.beta)
+    n_set = kwargs["data"]["set_mus"].shape[0] # total number of settlements
+    n = args.n_stu_per_sch * args.n_sch_per_set * n_set # total number of students
+    n_sch = args.n_sch_per_set * n_set # total number of schools
+    sch_sizes = np.repeat(args.n_stu_per_sch, n_sch) # number of students per school
+    beta = np.array(args.beta) # coefficients for the covariates
 
-
+    # Generate data
     print(save_dir_data)
     print("Generating network...")
     A, D = gen_kenya_network(
@@ -428,4 +485,6 @@ if __name__ == "__main__":
             collect_res_csvs(save_dir_data.parent, bench_design="CR", variance=True)
 
         # Adjust axis limits to be the same for all desiderata tradeoff grids
-        adjust_joint_grid_limits(dt_grids, save_dir_res / "igr_checks", dt_grid_save_fnames)
+        # adjust_joint_grid_limits(dt_grids, save_dir_res / "igr_checks", dt_grid_save_fnames)
+        adjust_joint_grid_limits(dt_grids)
+        save_joint_grids(dt_grids, save_dir_res / "igr_checks", dt_grid_save_fnames)

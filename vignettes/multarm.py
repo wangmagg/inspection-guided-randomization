@@ -54,8 +54,9 @@ def multarm_config():
     parser.add_argument("--out-dir", type=str, default="res/vig1_multarm")
 
     args = parser.parse_args()
-    genetic_kwargs = get_genetic_kwargs(args)
 
+    # Set up kwargs
+    genetic_kwargs = get_genetic_kwargs(args)
     comps = np.column_stack((np.zeros(args.n_arms - 1, dtype=int), np.arange(1, args.n_arms, dtype=int)))
     metric_kwargs = {"n_arms": args.n_arms, "comps": comps, "X": None}
     subdir_dict = {"n_enum": args.n_enum, "n_accept": args.n_accept}
@@ -64,6 +65,8 @@ def multarm_config():
         "genetic": genetic_kwargs,
         "save": subdir_dict
     }
+
+    # Define and create save directories
     save_dir_dgp = Path(args.out_dir) / f"n-{args.n_stu}_arms-{args.n_arms}"
     save_subdirs = [f"{k}-{v}" for k, v in subdir_dict.items()]
     save_dir_data = save_dir_dgp / str(args.data_iter)
@@ -75,20 +78,40 @@ def multarm_config():
     return args, kwargs, save_dir_data, save_dir_res
 
 def restriction(
-    design,
-    z_pool,
-    n_accept,
-    save_dir,
-    save_path_data=None,
-    metric=None,
-    metric_kwargs=None,
-    genetic_kwargs=None,
-    seed=None
-):
+    design: str,
+    z_pool: np.ndarray,
+    n_accept: int,
+    save_dir: Path,
+    save_path_data: Path=None,
+    metric: callable=None,
+    metric_kwargs: dict={},
+    genetic_kwargs: dict={},
+    seed: int=42
+) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+    """
+    Restrict candidate pool of treatment allocations down 
+    to the set of accepted allocations
+
+    Args:
+        - design: name of design
+        - z_pool: candidate treatment allocation pool
+        - n_accept: number of treatment allocations to accept
+        - save_dir: directory to save results to 
+        - save_path_data: path to covariate file (used for QB design)
+        - metric: inspection metric to use for restriction
+        - metric_kwargs: keyword arguments for metric
+        - genetic_kwargs: keyword arguments for genetic algorithm
+        - mirror_kwargs: keyword arguments for adding mirror allocations
+        - seed: random seed
+    """
+
+    # Create save directory for design
     save_dir_design = save_dir / design
     if not save_dir_design.exists():
         save_dir_design.mkdir()
 
+    # Define save paths for the accepted allocations, the scores for the accepted allocations,
+    # and the scores for the pool of candidate allocations
     if design == "QB":
         save_path_z = save_dir_design / f"z.csv"
     elif design == "CR":
@@ -101,6 +124,7 @@ def restriction(
 
     print(f"{design}: Restricting...")
 
+    # Load and return accepted allocations and scores if they already exist
     if save_path_z.exists() and save_path_scores.exists() and save_path_scores_pool.exists():
         print(f"{save_path_z.name} already exists, loading...")
         if design == "QB":
@@ -114,6 +138,7 @@ def restriction(
             scores_pool = pickle.load(f)
         return z_accepted, scores_pool, scores_accepted
     
+    # Load scores for the pool of candidate allocations if they already exist
     if save_path_scores_pool.exists():
         print(f"{save_path_scores_pool.name} already exists, loading...")
         with open(save_path_scores_pool, "rb") as f:
@@ -121,6 +146,7 @@ def restriction(
     else:
         scores_pool = None
     
+    # If design is QB, call R script to run threshold blocking
     if design == "QB":
         subprocess.run(
                 [
@@ -136,6 +162,8 @@ def restriction(
             )
         z_accepted = pd.read_csv(save_path_z).to_numpy()
         scores_accepted = metric(z_accepted, **metric_kwargs)
+
+    # Otherwise, run restriction
     else:
         z_accepted, (scores_pool, _), (scores_accepted, _) = igr_restriction(
             z_pool,
@@ -149,6 +177,8 @@ def restriction(
             genetic_kwargs=genetic_kwargs
         )
 
+    # Save and return the accepted allocations, the scores of the accepted allocations,
+    # and the scores of the pool of candidate allocations
     if design != "QB":
         with open(save_path_z, "wb") as f:
             pickle.dump(z_accepted, f)
@@ -161,16 +191,22 @@ def restriction(
 
 
 def run_trial_and_analyze(
-        design, 
-        y_0, y_1, z_accepted, comps, 
-        save_dir, data_iter,
-        metric_lbl=None,
-        subdir_dict=None):
+        design: str, 
+        y_0: np.ndarray, 
+        y_1: np.ndarray, 
+        z_accepted: np.ndarray,
+        comps: np.ndarray, 
+        save_dir: Path, 
+        data_iter: int,
+        metric_lbl: str=None,
+        subdir_dict: dict={}):
     
+    # Create save directory for design
     save_dir_design = save_dir / design
     if not save_dir_design.exists():
         save_dir_design.mkdir()
 
+    # Define save paths for the estimated treatment effects and the results
     if metric_lbl is not None:
         tau_hat_path = save_dir_design / f"{metric_lbl}_tau_hat.pkl"
         res_path = save_dir_design / f"{metric_lbl}_res.csv"
@@ -183,8 +219,11 @@ def run_trial_and_analyze(
         return
     else:
         print(f"{design}: Estimating...")
+
+        # Get observed outcomes for each arm
         y_obs_accepted = get_multarm_y_obs(y_0, y_1, z_accepted)
 
+        # Estimate treatment effects and get p-values
         if design == "QB":
             qb_blocks = pd.read_csv(save_dir_design / "blocks.csv")
             blocks = qb_blocks["cluster_label"].to_numpy()
@@ -202,11 +241,13 @@ def run_trial_and_analyze(
         p_val = Parallel(n_jobs=-1, verbose=1)(delayed(p_val_fn)(z_accepted, y_obs_accepted, idx, comps=comps, **kwargs)
                                                for idx in tqdm(range(z_accepted.shape[0])))
 
+        # Compute bias, RMSE, and rejection rate
         tau_true = get_tau_true(y_0, y_1, comps)
         bias = np.mean(tau_hat, axis=0) - tau_true
         rmse = np.sqrt(np.mean((tau_hat - tau_true) ** 2, axis=0))
         rr = np.mean(np.array(p_val) < 0.05, axis=0)
 
+        # Save results
         if metric_lbl is not None:
             design = f"{design} - {metric_lbl}"
         res_dict = {"data_iter": data_iter,
@@ -227,7 +268,9 @@ if __name__ == "__main__":
 
     # Generate data
     y_0, y_1, X = gen_multarm_data(args.n_stu, args.tau_sizes, args.sigma, args.seed + args.data_iter)
-    kwargs["metric"]["X"] = X.to_numpy()
+
+    # Only include observed covariates as inputs to metric (ability and confidence are latent/unobserved)
+    kwargs["metric"]["X"] = X[["gender", "age", "major", "hw"]].to_numpy()
     X.to_csv(save_dir_data / f"X.csv", index=False)
 
     # Generate pool of candidate treatment allocations

@@ -11,22 +11,37 @@ import pickle
 import seaborn as sns
 
 from src.metrics import SMD, SignedMaxAbsSMD
-from src.aesthetics import get_palette, get_hue_order
+from src.aesthetics import get_design_palette, get_design_hue_order, adjust_joint_grid_limits, save_joint_grids
 
 
 def multarm_bal_boxplot(
-    designs,
-    metric_lbls,
-    n_arms,
-    X,
-    comps,
-    res_dir,
-    fig_dir
-):
+    designs: list[str],
+    metric_lbls: list[str],
+    n_arms: int,
+    X: pd.DataFrame,
+    comps: np.ndarray,
+    res_dir: Path,
+    fig_dir: Path
+) -> None:
+    """
+    Create a boxplot of the max SMD for each covariate across designs.
+
+    Args:
+        - designs: list of design names to plot (e.g., ["CR", "QB", "IGR", "IGRg"])
+        - metric_lbls: list of metric labels (e.g., ["SumMaxAbsSMD", "MaxMahalanobis"])
+        - n_arms: number of arms in the experiment
+        - X: covariate dataframe
+        - comps: array of pairwise arm comparisons to make 
+        - res_dir: directory containing the results
+        - fig_dir: directory to save the figure
+    """
+
+    # Get covariate names to use as x-axis labels
     cov_names = X.columns
     cov_names = [cov_name.capitalize() for cov_name in cov_names]
     X = X.to_numpy()
 
+    # Load results and compute SMD for each design for each covariate
     all_df_list = []
     for metric_lbl in metric_lbls:
         for design in designs:
@@ -47,18 +62,20 @@ def multarm_bal_boxplot(
             smd_df['design'] = design
             all_df_list.append(smd_df)
 
+    # Combine results into a single dataframe
     df = pd.concat(all_df_list)
     df = pd.melt(df, id_vars=['design'], var_name='Covariate', value_name='MaxSMD')
     
-    fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    # Create boxplot
+    fig, ax = plt.subplots(1, 1, figsize=(3*len(cov_names), 6))
     sns.boxplot(
         data=df,
         x="Covariate",
         y="MaxSMD",
         hue="design",
         fliersize=1,
-        hue_order=get_hue_order(df['design'].unique()),
-        palette=get_palette(df['design'].unique()),
+        hue_order=get_design_hue_order(df['design'].unique()),
+        palette=get_design_palette(df['design'].unique()),
         ax=ax,
     )
     ax.axhline(0, color="black", linestyle="--")
@@ -67,6 +84,7 @@ def multarm_bal_boxplot(
     ax.tick_params(axis='x', labelsize=16)
     ax.tick_params(axis='y', labelsize=16)
 
+    # Add legend
     legend = ax.legend_
     handles = legend.legend_handles
     labels = [t.get_text() for t in legend.get_texts()]
@@ -88,18 +106,33 @@ def multarm_bal_boxplot(
     plt.close()
 
 def multarm_pairwise_bal_boxplot(
-    designs,
-    metric_lbls,
-    n_arms,
-    X,
-    comps,
-    res_dir,
-    fig_dir
+    designs: list[str],
+    metric_lbls: list[str],
+    n_arms: int,
+    X: pd.DataFrame,
+    comps: np.ndarray,
+    res_dir: Path,
+    fig_dir: Path
 ):
+    """
+    Create a boxplot of the SMD for each covariate for each pairwise comparison 
+    between arms across designs.
+    
+    Args:
+        - designs: list of design names to plot (e.g., ["CR", "QB", "IGR", "IGRg"])
+        - metric_lbls: list of metric labels (e.g., ["SumMaxAbsSMD", "MaxMahalanobis"])
+        - n_arms: number of arms in the experiment
+        - X: covariate dataframe
+        - comps: array of pairwise arm comparisons to make 
+        - res_dir: directory containing the results
+        - fig_dir: directory to save the figure
+    """
+    # Get covariate names to use as x-axis labels
     cov_names = X.columns
     cov_names = [cov_name.capitalize() for cov_name in cov_names]
     X = X.to_numpy()
 
+    # Load results and compute SMD for each design for each covariate and pairwise comparison
     all_df_list = []
     for metric_lbl in metric_lbls:
         for design in designs:
@@ -122,12 +155,16 @@ def multarm_pairwise_bal_boxplot(
                 smd_df['design'] = design
                 smd_df['group_comp'] = f"{comp[0]} vs {comp[1]}"
                 all_df_list.append(smd_df)
+
+    # Combine results into a single dataframe
     df = pd.concat(all_df_list)
 
+    # Set up boxplot
     fig, axs = plt.subplots(1, len(cov_names), figsize=(5 * len(cov_names), 5), sharey=True, sharex=True)
-    hue_order = get_hue_order(df['design'].unique())
-    palette = get_palette(df['design'].unique())
+    hue_order = get_design_hue_order(df['design'].unique())
+    palette = get_design_palette(df['design'].unique())
 
+    # Create boxplot for each covariate
     for ax, cov in zip(axs, cov_names):
         df_cov = df[["group_comp", "design", cov]]
         sns.boxplot(
@@ -152,6 +189,7 @@ def multarm_pairwise_bal_boxplot(
         ax.tick_params(axis="y", labelsize=16)
         ax.get_legend().set_visible(False)
     
+    # Add legend
     handles, labels = axs[0].get_legend_handles_labels()
     ncol = 1
     loc = "center right"
@@ -173,11 +211,20 @@ def multarm_pairwise_bal_boxplot(
     fig.savefig(save_path, bbox_inches="tight", transparent=True)
     
 
-def _add_se(df):
+def _add_se(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add a column for the standard error of the estimated effects within 
+    each bins of the scores of accepted allocations
+
+    Args:
+        - df: dataframe containing the estimated effects and scores of accepted allocations
+    """
+    # If all scores are the same, set the standard error to 0
     if df["score_accepted"].nunique() == 1:
         df["score_bin_mid"] = df["score_accepted"].iloc[0]
         df["se"] = 0
     else:
+        # Separate scores into 50 bins and get the midpoints of each bin
         labels, bins = pd.qcut(
             df["score_accepted"],
             q=50,
@@ -187,6 +234,8 @@ def _add_se(df):
         )
         bins_mid = (bins[1:] + bins[:-1]) / 2
         df["score_bin_mid"] = bins_mid[labels]
+
+        # Compute the standard error of the estimated effects within each bin
         df = df.groupby(["design", "score_bin_mid"]).agg(
             se=("tau_hat", "sem")
         )
@@ -194,12 +243,25 @@ def _add_se(df):
     return df
 
 def multarm_err_scatter(
-    designs,
-    metric_lbls,
-    res_dir,
-    fig_dir,
-    arm_idx=1
+    designs: list[str],
+    metric_lbls: list[str],
+    res_dir: Path,
+    fig_dir: Path,
+    arm_idx: int=1
 ):
+    """
+    Create a scatterplot of the standard error of the estimated treatment effects
+    against the score of the accepted allocations for each design and metric.
+
+    Args:
+        - designs: list of design names to plot (e.g., ["CR", "QB", "IGR", "IGRg"])
+        - metric_lbls: list of metric labels (e.g., ["SumMaxAbsSMD", "MaxMahalanobis"])
+        - res_dir: directory containing the results
+        - fig_dir: directory to save the figure
+        - arm_idx: index of the arm to plot the effect estimate errors for
+    """
+
+    # Create joint grid for each metric
     jnt_grids = []
     for metric_lbl in metric_lbls:
         metric_df = []
@@ -211,6 +273,7 @@ def multarm_err_scatter(
             else:
                 raise ValueError(f"Unknown design: {design}")
             
+            # Load scores and effect estimates
             score_fname = f"{metric_lbl}_scores.pkl"
             with open(res_dir / design / tau_hat_fname, "rb") as f:
                 design_tau_hat = pickle.load(f)
@@ -221,14 +284,17 @@ def multarm_err_scatter(
                 "tau_hat": design_tau_hat[:, arm_idx],
                 "score_accepted": score_accepted
             }
+            # Add standard error column
             design_df = pd.DataFrame(design_dict)
             design_df = _add_se(design_df)
             metric_df.append(design_df)
 
+        # Combine results into a single dataframe
         df = pd.concat(metric_df)
-        hue_order = get_hue_order(df["design"].unique())
-        palette = get_palette(df["design"].unique(), metric_lbl)
+        hue_order = get_design_hue_order(df["design"].unique())
+        palette = get_design_palette(df["design"].unique(), metric_lbl)
 
+        # Create joint grid
         jnt_grid = sns.JointGrid(
             data=df,
             x="score_bin_mid",
@@ -238,10 +304,13 @@ def multarm_err_scatter(
             hue_order=hue_order,
             palette=palette
         )
-        # Make scatterplot with marginal histograms
+
+        # Make scatterplot of standard errors of effect estimates versus scores,
+        # including marginal histograms for each axis
         jnt_grid.plot_joint(sns.scatterplot, s=14, linewidth=0.1, edgecolor="black", alpha=0.8)
         jnt_grid.plot_marginals(sns.kdeplot, fill=True, alpha=0.3)
 
+        # Format plot
         jnt_grid.figure.suptitle(f"{metric_lbl}", fontsize=20)
         jnt_grid.figure.subplots_adjust(top=0.85)
 
@@ -252,6 +321,7 @@ def multarm_err_scatter(
         jnt_grid.ax_joint.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         jnt_grid.ax_joint.tick_params(axis='both', which='major', labelsize=16)
 
+        # Add legend
         jnt_grid.ax_joint.legend(
             title=None,
             markerscale=1.5,
@@ -265,33 +335,40 @@ def multarm_err_scatter(
         jnt_grids.append(jnt_grid)
 
     # Set y-axis limits to be the same for all joint grids
-    y_max = np.max([jnt_grid.ax_joint.get_ylim()[1] for jnt_grid in jnt_grids])
-    y_min = np.min([jnt_grid.ax_joint.get_ylim()[0] for jnt_grid in jnt_grids])
-    for jnt_grid in jnt_grids:
-        jnt_grid.ax_joint.set_ylim(y_min, y_max)
-
+    adjust_joint_grid_limits(jnt_grids, adjust_x=False, adjust_y=True)
+    
     # Save figures
-    for jnt_grid, metric_lbl in zip(jnt_grids, metric_lbls):
-        save_fname = f"{metric_lbl}_tau_hat_scatter.svg"
-        save_path = fig_dir / save_fname
-
-        print(save_path)
-        jnt_grid.savefig(save_path, dpi=300, bbox_inches="tight", transparent=True)
-        plt.close()
+    save_fnames = [f"{metric_lbl}_tau_hat_scatter.svg" for metric_lbl in metric_lbls]
+    save_joint_grids(jnt_grids, fig_dir, save_fnames)
 
 def multarm_rmse_rr_vs_enum(
-    res_dir,
-    fig_dir
-):
+    res_dir: Path,
+    fig_dir: Path,
+    arm_idx: int=2
+) -> ModuleNotFoundError:
+    """
+    Make a lineplot of the RMSE and rejection rate versus the number of enumerated allocations
+    across data iterations. Make subplots for unique values of the number of accepted allocations.
+
+    Args:
+        - res_dir: directory containing the RMSE and rejection rate results
+        - fig_dir: directory to save the figure to
+    """
+
+    # Load results
     res_df = pd.read_csv(res_dir / "res_collated.csv")
     n_accepts = res_df["n_accept"].unique()
 
+    # Set up figure
     fig, axs = plt.subplots(2, len(n_accepts), figsize=(6*len(n_accepts), 12), sharey='row', sharex='all')
-    hue_order = get_hue_order(res_df['design'].unique())
-    palette = get_palette(res_df['design'].unique())
+    hue_order = get_design_hue_order(res_df['design'].unique())
+    palette = get_design_palette(res_df['design'].unique())
 
+    # Plot RMSE and rejection rate against the number of enumerated allocations
     for i, n_accept in enumerate(n_accepts):
         res_igr_subdf = res_df[(res_df["n_accept"] == n_accept) & ~res_df["design"].str.contains("CR")]
+
+        # Plot RMSE
         sns.lineplot(
             data=res_igr_subdf,
             x="n_enum",
@@ -325,11 +402,12 @@ def multarm_rmse_rr_vs_enum(
         axs[0][i].set_ylabel("% CR RMSE", fontsize=16)
         axs[0][i].tick_params(axis='y', which='major', labelsize=16)
 
+        # Plot rejection rate
         res_subdf = res_df[(res_df["n_accept"] == n_accept)]
         sns.lineplot(
             data=res_subdf,
             x="n_enum",
-            y="rr_2",
+            y=f"rr_{arm_idx}",
             hue="design",
             linewidth=1,
             alpha=0.5,
@@ -343,7 +421,7 @@ def multarm_rmse_rr_vs_enum(
         sns.lineplot(
             data=res_subdf,
             x="n_enum",
-            y="rr_2",
+            y=f"rr_{arm_idx}",
             hue="design",
             marker='o', 
             markersize=4,
@@ -360,6 +438,7 @@ def multarm_rmse_rr_vs_enum(
         axs[1][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
         axs[1][i].xaxis.set_major_locator(MaxNLocator(integer=True, nbins=5))
 
+        # Add legend
         if i == len(n_accepts) - 1:
             axs[0][i].get_legend().remove()
             axs[1][i].legend(bbox_to_anchor=(0.1, -0.2), ncol=3, fontsize=14)
@@ -389,16 +468,19 @@ if __name__ == "__main__":
     enum_subdir = f"n_enum-{args.n_enum}"
     accept_subdir = f"n_accept-{args.n_accept}"
 
+    # Create directory for saving figures
     res_dir = out_dir / dgp_subdir / f"{args.data_iter}" / enum_subdir / accept_subdir
     fig_dir = res_dir / "res_figs"
     if not fig_dir.exists():
         fig_dir.mkdir(parents=True)
 
+    # Load data and set parameters
     X = pd.read_csv(out_dir / dgp_subdir / f"{args.data_iter}" / "X.csv")
     designs = ['CR', 'QB', 'IGR', 'IGRg']
     metric_lbls = ["SumMaxAbsSMD", "MaxMahalanobis"]
     comps = np.column_stack((np.zeros(args.n_arms - 1, dtype=int), np.arange(1, args.n_arms, dtype=int)))
-        
+
+    # Plot balance on each covariate across all arm comparisons
     multarm_bal_boxplot(
         designs,
         metric_lbls,
@@ -409,6 +491,7 @@ if __name__ == "__main__":
         fig_dir
     )
 
+    # Plot balance on each covariate across each pairwise comparisons between arms
     multarm_pairwise_bal_boxplot(
         designs,
         metric_lbls,
@@ -419,6 +502,7 @@ if __name__ == "__main__":
         fig_dir
     )
 
+    # Plot standard error of the estimated effects against the score of the accepted allocations
     multarm_err_scatter(
         designs,
         metric_lbls,
@@ -427,6 +511,7 @@ if __name__ == "__main__":
         arm_idx=1
     )
 
+    # Plot RMSE and rejection rate versus the number of enumerated allocations
     multarm_rmse_rr_vs_enum(
         res_dir=out_dir / dgp_subdir,
         fig_dir=out_dir / dgp_subdir,

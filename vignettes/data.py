@@ -30,6 +30,7 @@ def gen_multarm_data(
     ability = (
         (age - np.mean(age)) / np.std(age)
         - (major == 1)
+        - 0.5 * gender
         + rng.normal(0, sigma, n_students)
     )
     confidence = gender + (major == 2) + rng.normal(0, sigma, n_students)
@@ -39,7 +40,7 @@ def gen_multarm_data(
     y_arms = y_0 + tau_sizes[:, np.newaxis] * np.std(y_0)
 
     X_df = pd.DataFrame.from_dict(
-        {"gender": gender, "age": age, "major": major, "ability": ability, "hw": hw}
+        {"gender": gender, "age": age, "major": major, "hw": hw, "ability": ability, "confidence": confidence}
     )
 
     return y_0, y_arms, X_df
@@ -131,9 +132,30 @@ def gen_kenya_network(
     p_diff_set_diff_sch: float,
     block_sizes: np.ndarray[int],
     seed: int=42,
-):
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Generate schools and individual-level interaction network for simulated experiment with interference
+
+    Use stochastic block model with different edge probabilities
+    for individuals in the same school, in the same settlement but different schools,
+    and individuals in different settlements
+
+    Args:
+        - set_coords: coordinates of the centroids of the settlements
+        - coords_range: range of the coordinates used to generate school locations
+        - n_sch_per_set: number of schools per settlement
+        - gamma: distance decay rate for the interaction scores
+        - p_same_sch: edge probability for individuals in the same school
+        - p_same_set_diff_sch: edge probability factor for individuals in the same settlement but different schools
+        - p_diff_set_diff_sch: edge probability factor for individuals in different settlements
+        - block_sizes: number of individuals in each school
+        - seed: random seed
+
+    """
     rng = np.random.default_rng(seed)
     all_sch_coords = []
+
+    # Generate lat/long coordinates for each school
     for coords in set_coords:
         sch_coords_0 = rng.choice(
             np.linspace(coords[0] - coords_range, coords[0] + coords_range, 200),
@@ -150,21 +172,26 @@ def gen_kenya_network(
     all_sch_coords = np.vstack(all_sch_coords)
 
     n_sch = n_sch_per_set * len(set_coords)
-    w_mat = np.ones((n_sch, n_sch))
-    p_mat = np.ones((n_sch, n_sch))
-    sch_to_set = np.repeat(np.arange(len(set_coords)), n_sch_per_set)
-    diff_sch = ~np.eye(n_sch, dtype=bool)
+    w_mat = np.ones((n_sch, n_sch)) # stores normalized interaction scores
+    p_mat = np.ones((n_sch, n_sch)) # stores edge probabilities
+    sch_to_set = np.repeat(np.arange(len(set_coords)), n_sch_per_set) # maps schools to settlements
+    diff_sch = ~np.eye(n_sch, dtype=bool) # mask of pairs of schools in different settlements
 
+    # Calculate interaction scores as the 
+    # inverse of the gamma^th power of the distance between schools
     pdists = squareform(pdist(all_sch_coords, metric="euclidean"))
     pdists_normed = pdists / np.max(pdists)
     intxn_scores = pdists_normed[diff_sch] ** -gamma
     w_mat[diff_sch] = intxn_scores / np.max(intxn_scores)
 
+    # Calculate edge probabilities based on the interaction scores
+    # and whether individuals are in the same school, same settlement, or different settlements
     same_set = sch_to_set[:, np.newaxis] == sch_to_set[np.newaxis, :]
     p_mat[~diff_sch & same_set] = p_same_sch
     p_mat[diff_sch & same_set] = p_same_set_diff_sch * w_mat[diff_sch & same_set]
     p_mat[diff_sch & ~same_set] = p_diff_set_diff_sch * w_mat[diff_sch & ~same_set]
 
+    # Generate the network 
     G = nx.stochastic_block_model(block_sizes, p_mat, seed=seed)
     A = nx.to_numpy_array(G, dtype=np.float32)
 
@@ -172,25 +199,47 @@ def gen_kenya_network(
 
 
 def gen_kenya_data(
-    set_mus,
-    n_sch_per_set,
-    n_stu_per_sch,
-    sigma_sch_in_set,
-    sigma_stu_in_sch,
-    A,
-    beta,
-    tau_size,
-    sigma,
-    seed,
-):
+    set_mus: np.ndarray,
+    n_sch_per_set: int,
+    n_stu_per_sch: int,
+    sigma_sch_in_set: float,
+    sigma_stu_in_sch: float,
+    A: np.ndarray,
+    beta: np.ndarray,
+    tau_size: float,
+    sigma: float,
+    seed: int=42
+) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
+    """
+    Generate covariates and potential outcomes for the simulated experiment with interference
+
+    Sample individual-level covariates from a nested model with settlement- and school-specific means
+    Outcomes are generated as a linear function of covariates with an additive treatment effect
+
+    Args:
+        - set_mus: mean of the random effects for each settlement
+        - n_sch_per_set: number of schools per settlement
+        - n_stu_per_sch: number of students per school
+        - sigma_sch_in_set: standard deviation of the random effects for schools within a settlement
+        - sigma_stu_in_sch: standard deviation of the random effects for students within a school
+        - A: adjacency matrix of the network
+        - beta: coefficients on the covariates in the outcome model
+        - tau_size: effect size
+        - sigma: standard deviation of noise
+        - seed: random seed
+
+    """
     rng = np.random.default_rng(seed)
     n_set = set_mus.shape[0]
     set_mus_sd = np.std(set_mus, axis=0)
 
+    # Generate individual-level covariates
     X = []
     for set in range(n_set):
         for _ in range(n_sch_per_set):
+            # Sample school-specific mean (within the settlement)
             sch_mu = rng.normal(set_mus[set], sigma_sch_in_set * set_mus_sd)
+            # Sample individual-specific covariates (within the school)
             sch_Xs = [
                 rng.normal(sch_mu, sigma_stu_in_sch * set_mus_sd)
                 for _ in range(n_stu_per_sch)
@@ -199,10 +248,12 @@ def gen_kenya_data(
     X = np.vstack(X)
     X = np.matmul(A, X)
 
+    # Generate potential outcomes
     eps = rng.normal(0, sigma, X.shape[0])
     y_0 = np.matmul(X, beta.transpose()).squeeze() + eps
     y_1 = y_0 + tau_size * np.std(y_0)
 
+    # Store covariates and school and settlement labels
     X_df = pd.DataFrame(X)
     set_lbl = np.repeat(np.arange(n_set), n_sch_per_set * n_stu_per_sch)
     sch_in_set_lbl = np.tile(np.repeat(np.arange(n_sch_per_set), n_stu_per_sch), n_set)
@@ -214,7 +265,30 @@ def gen_kenya_data(
     return y_0, y_1, X_df
 
 
-def get_kenya_y_obs(y_0, y_1, z_accepted, A, q, cluster_lbls):
+def get_kenya_y_obs(
+    y_0: np.ndarray,
+    y_1: np.ndarray,
+    z_accepted: np.ndarray,
+    A: np.ndarray,
+    q: float,
+    cluster_lbls: np.ndarray,
+) -> np.ndarray:
+    """
+    Generate observed outcomes for the simulated experiment with interference
+    from the potential outcomes and the treatment assignments
+
+    Applies interference through a fraction-neighborhood exposure model,
+    where control individuals are exposed to treatment if at least a fraction q
+    of their neighbors are treated
+
+    Args:
+        - y_0: potential outcomes under all-control
+        - y_1: potential outcomes under all-treatment
+        - z_accepted: binary treatment assignments
+        - A: adjacency matrix of the network
+        - q: threshold for exposure
+        - cluster_lbls: cluster (school) labels for individuals
+    """
     z_accepted_stu = np.vstack([z[cluster_lbls] for z in z_accepted])
 
     n_z1_nbrs = np.dot(A.T, z_accepted_stu.T).T
@@ -225,9 +299,31 @@ def get_kenya_y_obs(y_0, y_1, z_accepted, A, q, cluster_lbls):
     return y_obs
 
 
-def get_kenya_sch_y_obs(y_0, y_1, z_accepted, A, q, cluster_lbls):
+def get_kenya_sch_y_obs(
+    y_0: np.ndarray,
+    y_1: np.ndarray,
+    z_accepted: np.ndarray,
+    A: np.ndarray,
+    q: np.ndarray,
+    cluster_lbls: np.ndarray,
+) -> np.ndarray:
+    """
+    Generate school-level average observed outcomes for the simulated experiment with interference
+    from the potential outcomes and the treatment assignments
+
+    Args:
+        - y_0: potential outcomes under all-control
+        - y_1: potential outcomes under all-treatment
+        - z_accepted: binary treatment assignments
+        - A: adjacency matrix of the network
+        - q: threshold for exposure
+        - cluster_lbls: cluster (school) labels for individuals
+    """
+
+    # Get individual-level observed outcomes
     y_obs = get_kenya_y_obs(y_0, y_1, z_accepted, A, q, cluster_lbls)
 
+    # Calculate the mean of the individual-level observed outcomes for each school
     cluster_range = np.arange(z_accepted.shape[1])
     cluster_mask = cluster_lbls == cluster_range[:, None]
     sch_y_obs = (

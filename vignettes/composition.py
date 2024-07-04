@@ -89,10 +89,10 @@ def restriction(
     n_accept: int,
     save_dir: Path,
     metric: callable=None,
-    metric_kwargs: dict=None,
-    genetic_kwargs: dict=None,
-    mirror_kwargs: dict=None
-):
+    metric_kwargs: dict={},
+    genetic_kwargs: dict={},
+    mirror_kwargs: dict={}
+) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
     """
     Restrict candidate pool of treatment allocations down 
     to the set of accepted allocations
@@ -113,7 +113,8 @@ def restriction(
     if not save_dir_design.exists():
         save_dir_design.mkdir()
 
-    # Define save paths
+    # Define save paths for the accepted allocations, the scores for the accepted allocations,
+    # and the scores for the pool of candidate allocations
     save_path_scores_pool = save_dir_design / f"scores_pool.pkl"
     save_path_scores = save_dir_design / f"{metric.__name__}_scores.pkl"
     if design == "GFR":
@@ -133,7 +134,7 @@ def restriction(
         with open(save_path_scores_pool, "rb") as f:
             scores_pool = pickle.load(f)
         return z_accepted, scores_pool, scores_accepted
-    
+
     # Load scores pool if it already exists
     if save_path_scores_pool.exists():
         with open(save_path_scores_pool, "rb") as f:
@@ -155,7 +156,7 @@ def restriction(
         genetic_kwargs=genetic_kwargs
     )
 
-    # Save and return the pool of accepted allocations, the scores of the accepted allocations,
+    # Save and return the accepted allocations, the scores of the accepted allocations,
     # and the scores of the pool of candidate allocations
     with open(save_path_z, "wb") as f:
         pickle.dump(z_accepted, f)
@@ -163,20 +164,21 @@ def restriction(
         pickle.dump(scores_accepted, f)
     if not save_path_scores_pool.exists():
         with open(save_path_scores_pool, "wb") as f:
-                pickle.dump(scores_pool, f)
+            pickle.dump(scores_pool, f)
 
     return z_accepted, scores_pool, scores_accepted
 
 
 def run_trial_and_analyze(
-        design: str, 
-        y: np.ndarray, 
-        z_accepted: np.ndarray, 
-        comps: np.ndarray, 
-        save_dir: Path, 
-        data_iter: int, 
-        metric_lbl: str=None, 
-        subdir_dict: dict=None):
+    design: str,
+    y: np.ndarray,
+    z_accepted: np.ndarray,
+    comps: np.ndarray,
+    save_dir: Path,
+    data_iter: int,
+    metric_lbl: str = None,
+    subdir_dict: dict = {},
+) -> None:
     """
     "Run" a trial and get estimation and inference results
     Args:
@@ -192,11 +194,11 @@ def run_trial_and_analyze(
             to distinguish between runs of the same design under
             different simulation parameter settings
     """
-    
+
     # Create save directory for design
     save_dir_design = save_dir / design
 
-    # Define save paths
+    # Define save paths for the estimated treatment effects and the bias/rmse/rr results
     if metric_lbl is not None:
         tau_hat_path = save_dir_design / f"{metric_lbl}_tau_hat.pkl"
         res_path = save_dir_design / f"{metric_lbl}_res.csv"
@@ -220,7 +222,7 @@ def run_trial_and_analyze(
         # Get p-values
         p_val = Parallel(n_jobs=-2, verbose=1)(delayed(get_pval_mult_arm)(z_accepted, y_obs_accepted, idx, comps)
                                     for idx in range(z_accepted.shape[0]))
-        
+
         # Get bias, RMSE, and rejection rate
         tau_true = get_tau_true_composition(y, comps)
         bias = np.mean(tau_hat, axis=0) - tau_true
@@ -243,6 +245,7 @@ def run_trial_and_analyze(
             pickle.dump(tau_hat, f)
         res_df.to_csv(res_path, index=False)
 
+
 if __name__ == "__main__":
     args, kwargs, save_dir_data, save_dir_res = composition_config()
 
@@ -259,7 +262,7 @@ if __name__ == "__main__":
     kwargs["metric"]["X"] = X.drop(columns="gender").to_numpy()
     X.to_csv(save_dir_data / "X.csv", index=False)
 
-    # Generate pool of candidate treatment allocations
+    # Enumerate pool of candidate treatment allocations
     attr_arr = X["gender"].to_numpy().astype(bool)
     z_pool = igr_paired_gfr_enumeration(args.n_stu, args.n_arms, args.n_enum, args.rhos, attr_arr, seed=args.seed)
 
