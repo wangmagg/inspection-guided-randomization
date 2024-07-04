@@ -124,7 +124,7 @@ def restriction(
     if design == "QB":
         subprocess.run(
                 [
-                    "Rscript", "src/utils/qb.R",
+                    "Rscript", "src/R/qb.R",
                     "--data-path", save_path_data,
                     "--z-path", save_path_z,
                     "--blocks-path", save_dir_design / "blocks.csv",
