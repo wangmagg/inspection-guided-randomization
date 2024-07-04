@@ -1,13 +1,31 @@
 from pathlib import Path
 import pandas as pd
-from typing import List
+from pandas.core.groupby import DataFrameGroupBy
+from typing import Union
 
-def perc_of_benchmark(bench_design, group, col):
+def perc_of_benchmark(bench_design: str, group: Union[DataFrameGroupBy, pd.DataFrame], col):
+    """
+    Calculate percentage of a metric compared to a benchmark design
+    
+    Args:
+        - bench_design: name of benchmark design
+        - group: group of results from dataframe
+        - col: column name of metric
+    """
     ref_value = group[group["design"].str.contains(bench_design)][col].values[0]
     perc_reduc = group[col].apply(lambda x: x / ref_value * 100)
     return perc_reduc
 
-def collect_res_csvs(save_dir, bench_design="CR", variance=False):
+def collect_res_csvs(save_dir: str, bench_design="CR", variance=False) -> None:
+    """
+    Collect and collate results from multiple res.csv files across
+    different simulation parameter settings
+
+    Args:
+        - save_dir: directory to save collated results to
+        - bench_design: name of benchmark design
+        - variance: whether to calculate variance of metrics
+    """
     res_dfs = []
     res_df_files = Path(save_dir).rglob("*res.csv")
     for res_df_file in res_df_files:
@@ -18,6 +36,7 @@ def collect_res_csvs(save_dir, bench_design="CR", variance=False):
     rmse_cols = [col for col in res.columns if col.startswith("rmse")]
     rr_cols = [col for col in res.columns if col.startswith("rr")]
 
+    # Calculate variance as the difference between RMSE^2 and bias^2
     if variance:
         var_cols = []
         for (bias_col, rmse_col) in zip(bias_cols, rmse_cols):
@@ -36,6 +55,7 @@ def collect_res_csvs(save_dir, bench_design="CR", variance=False):
     res.sort_values(by=iter_group_cols, inplace=True)
     res_grouped = res.groupby(iter_group_cols, dropna=False)
     
+    # Calculate percentage of metrics compared to benchmark design
     if res_grouped.ngroups == 1:
         for bias_col in bias_cols:
             res[f"perc_{bench_design}_{bias_col}"] = perc_of_benchmark(bench_design, res, bias_col)
@@ -44,7 +64,6 @@ def collect_res_csvs(save_dir, bench_design="CR", variance=False):
         if variance:
             for var_col in var_cols:
                 res[f"perc_{bench_design}_{var_col}"] = perc_of_benchmark(bench_design, res, var_col)
-
     else:
         for bias_col in bias_cols:
             res[f"perc_{bench_design}_{bias_col}"] = (
@@ -65,6 +84,8 @@ def collect_res_csvs(save_dir, bench_design="CR", variance=False):
                     .reset_index(drop=True)
                     .sort_index().values
                 )
+
+    # Save collated results
     res.to_csv(save_dir / "res_collated.csv", index=False)
 
     agg_dict = {}

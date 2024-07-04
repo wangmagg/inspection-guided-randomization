@@ -22,11 +22,13 @@ if __name__ == "__main__":
     enum_subdir = f"n_enum-{args.n_enum}"
     accept_subdir = f"n_accept-{args.n_accept}"
 
+    # Create directory for saving figures
     res_dir = out_dir / dgp_subdir / f"{args.data_iter}" / enum_subdir / accept_subdir 
     fig_dir = res_dir / 'res_figs'
     if not fig_dir.exists():
         fig_dir.mkdir(parents=True)
 
+    # Load data and set parameters
     X = pd.read_csv(out_dir / dgp_subdir / f"{args.data_iter}" / "X.csv")
     X_no_gender = X.drop(columns="gender")
     designs = ['GFR', 'IGR', 'IGRg']
@@ -39,6 +41,7 @@ if __name__ == "__main__":
     same_z_pairs = np.concatenate([np.array(list(combinations(same_z, 2))) for same_z in same_rho_sets.transpose()])
     comps = np.vstack((same_rho_pairs, same_z_pairs))
 
+    # Plot overall balance on each covariate across all group comparison
     multarm_bal_boxplot(
         designs,
         metric_lbls,
@@ -49,6 +52,7 @@ if __name__ == "__main__":
         fig_dir
     )
 
+    # Plot balance on each covariate across pairwise comparisons between groups
     multarm_pairwise_bal_boxplot(
         designs,
         metric_lbls,

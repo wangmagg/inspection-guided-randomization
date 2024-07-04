@@ -25,6 +25,9 @@ from vignettes.data import gen_composition_data, get_composition_y_obs
 from vignettes.collate import collect_res_csvs
 
 def composition_config():
+    """
+    Set up configuration for composition
+    """
     parser = ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--data-iter", type=int, default=0)
@@ -50,6 +53,8 @@ def composition_config():
     parser.add_argument("--out-dir", type=str, default="res/vig2_composition")
 
     args = parser.parse_args()
+
+    # Set up kwargs
     genetic_kwargs = get_genetic_kwargs(args)
 
     n_groups = args.n_arms * len(args.rhos)
@@ -68,6 +73,7 @@ def composition_config():
         "save": subdir_dict
     }
 
+    # Define and create save directories
     save_dir_dgp = Path(args.out_dir) / f"rhos-{'-'.join([str(rho) for rho in args.rhos])}"
     save_subdirs = [f"{k}-{v}" for k, v in subdir_dict.items()]
     save_dir_data = save_dir_dgp / str(args.data_iter)
@@ -78,20 +84,36 @@ def composition_config():
     return args, kwargs, save_dir_data, save_dir_res
 
 def restriction(
-    design,
-    z_pool,
-    n_accept,
-    save_dir,
-    metric=None,
-    metric_kwargs=None,
-    genetic_kwargs=None,
-    mirror_kwargs=None
+    design: str,
+    z_pool: np.ndarray,
+    n_accept: int,
+    save_dir: Path,
+    metric: callable=None,
+    metric_kwargs: dict=None,
+    genetic_kwargs: dict=None,
+    mirror_kwargs: dict=None
 ):
-    
+    """
+    Restrict candidate pool of treatment allocations down 
+    to the set of accepted allocations
+
+    Args:
+        - design: name of design
+        - z_pool: candidate treatment allocation pool
+        - n_accept: number of treatment allocations to accept
+        - save_dir: directory to save results
+        - metric: fitness function
+        - metric_kwargs: keyword arguments for fitness function
+        - genetic_kwargs: keyword arguments for genetic algorithm
+        - mirror_kwargs: keyword arguments for mirror algorithm
+    """
+
+    # Create save directory for design
     save_dir_design = save_dir / design
     if not save_dir_design.exists():
         save_dir_design.mkdir()
 
+    # Define save paths
     save_path_scores_pool = save_dir_design / f"scores_pool.pkl"
     save_path_scores = save_dir_design / f"{metric.__name__}_scores.pkl"
     if design == "GFR":
@@ -101,6 +123,7 @@ def restriction(
 
     print(f"{design}: Restricting...")
 
+    # Load and return accepted allocations and scores if they already exist
     if save_path_z.exists() and save_path_scores.exists() and save_path_scores_pool.exists():
         print(f"{save_path_z.name} already exists, loading...")
         with open(save_path_z, "rb") as f:
@@ -111,12 +134,14 @@ def restriction(
             scores_pool = pickle.load(f)
         return z_accepted, scores_pool, scores_accepted
     
+    # Load scores pool if it already exists
     if save_path_scores_pool.exists():
         with open(save_path_scores_pool, "rb") as f:
             scores_pool = pickle.load(f)
     else:
         scores_pool = None
 
+    # Run restriction
     z_accepted, (scores_pool, _), (scores_accepted, _) = igr_restriction(
         z_pool,
         n_accept,
@@ -129,6 +154,9 @@ def restriction(
         mirror_kwargs=mirror_kwargs,
         genetic_kwargs=genetic_kwargs
     )
+
+    # Save and return the pool of accepted allocations, the scores of the accepted allocations,
+    # and the scores of the pool of candidate allocations
     with open(save_path_z, "wb") as f:
         pickle.dump(z_accepted, f)
     with open(save_path_scores, "wb") as f:
@@ -141,13 +169,34 @@ def restriction(
 
 
 def run_trial_and_analyze(
-        design, 
-        y, z_accepted, comps, 
-        save_dir, data_iter, 
-        metric_lbl=None, 
-        subdir_dict=None):
+        design: str, 
+        y: np.ndarray, 
+        z_accepted: np.ndarray, 
+        comps: np.ndarray, 
+        save_dir: Path, 
+        data_iter: int, 
+        metric_lbl: str=None, 
+        subdir_dict: dict=None):
+    """
+    "Run" a trial and get estimation and inference results
+    Args:
+        - design: name of design
+        - y: potential outcomes
+        - z_accepted: accepted treatment allocations
+        - comps: list of pairs of arms to compare
+        - save_dir: directory to save results to
+        - data_iter: data sample iteration number
+        - metric_lbl: label for metric
+        - subdir_dict: dictionary of subdirectory names,
+            which will be included in the CSV results file
+            to distinguish between runs of the same design under
+            different simulation parameter settings
+    """
     
+    # Create save directory for design
     save_dir_design = save_dir / design
+
+    # Define save paths
     if metric_lbl is not None:
         tau_hat_path = save_dir_design / f"{metric_lbl}_tau_hat.pkl"
         res_path = save_dir_design / f"{metric_lbl}_res.csv"
@@ -155,21 +204,30 @@ def run_trial_and_analyze(
         tau_hat_path = save_dir_design / "tau_hat.pkl"
         res_path = save_dir_design / "res.csv"
 
+    # Load estimated effects and results CSV if they already exist
     if tau_hat_path.exists() and res_path.exists():
         print(f"{res_path.name} already exists, skipping estimation...")
         return
     else:
         print(f"{design}: Estimating...")
 
+        # Get observed outcomes
         y_obs_accepted = get_composition_y_obs(y, z_accepted)
+
+        # Get difference in means estimates
         tau_hat = np.array([diff_in_means_mult_arm(z, y_obs, comps) for z, y_obs in zip(z_accepted, y_obs_accepted)])
+
+        # Get p-values
         p_val = Parallel(n_jobs=-2, verbose=1)(delayed(get_pval_mult_arm)(z_accepted, y_obs_accepted, idx, comps)
                                     for idx in range(z_accepted.shape[0]))
+        
+        # Get bias, RMSE, and rejection rate
         tau_true = get_tau_true_composition(y, comps)
         bias = np.mean(tau_hat, axis=0) - tau_true
         rmse = np.sqrt(np.mean((tau_hat - tau_true) ** 2, axis=0))
         rr = np.mean(np.array(p_val) < 0.05, axis=0)
 
+        # Save results
         if metric_lbl is not None:
             design = f"{design} - {metric_lbl}"
         res_dict = {"design": design, 

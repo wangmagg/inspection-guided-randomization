@@ -7,6 +7,17 @@ from matplotlib import pyplot as plt
 
 
 def gen_multarm_data(n_students, tau_sizes, sigma, seed=42):
+    """
+    Generate data for multi-arm trial simulation
+    Outcome is a linear function of ability and confidence
+    Confidence is a linear function of gender and major
+    Ability is a linear function of age, major, and gender
+    Args:
+        - n_students: number of students
+        - tau_sizes: effect sizes for each arm
+        - sigma: standard deviation of noise
+        - seed: random seed
+    """
     rng = np.random.default_rng(seed)
 
     tau_sizes = np.array(tau_sizes)
@@ -14,7 +25,7 @@ def gen_multarm_data(n_students, tau_sizes, sigma, seed=42):
 
     age = rng.uniform(19, 25, n_students)
     major = rng.choice(3, n_students, p=[0.5, 0.3, 0.2])
-    ability = (age - np.mean(age)) / np.std(age) - (major == 1) - gender + rng.normal(0, sigma, n_students)
+    ability = (age - np.mean(age)) / np.std(age) - (major == 1) + rng.normal(0, sigma, n_students)
     confidence = gender + (major == 2) + rng.normal(0, sigma, n_students)
     hw = ability + rng.normal(0, sigma, n_students)
 

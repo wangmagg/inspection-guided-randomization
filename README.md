@@ -2,10 +2,10 @@
 When designing a randomized experiment, some treatment allocations are better than others for answering the causal question we want to answer, i.e. will lead to less biased, more precise treatment effect estimates. For example, allocations that are balanced on outcome-prognostic covariates will increase the precision of a difference-in-means estimator. Restricted randomization can be used to filter out undesirable treatment allocations that will likely generate poor effect estimates; that is, by restricting the randomization, undesirable allocations cannot possibly be chosen as the official deployed allocation for the experiment. Traditionally, restricted randomization is applied to two-arm experiments and focuses on covariate balance as the metric by which to assess the desirability of a candidate treatment allocation. 
 
 **Inspection-guided Randomization (IGR)** is a restricted randomization framework that filters out undesirable treatment assignments by _inspecting_ assignments against analyst-specified, domain-informed design desiderata. In IGR, the space of acceptable randomization allocations is “locked in” ex ante and is pre-registered, thus promoting transparency and reproducibility and safeguarding against statistical “hacking” in the analysis phase of the experiment. We break IGR down into the following steps: </br>
-  1. _Specification_ of the design desiderata, which are targeted by (i) inspection metrics, (ii) a fitness function that aggregates the inspection metrics, and (iii) a decision rule that determines whether an allocation is filtered out on the basis of its fitness function score. </br>
+  1. _Specification_ of the design desiderata, which are targeted by (i) inspection metrics, (ii) a fitness function that aggregates the inspection metrics, and (iii) a restriction rule that determines whether an allocation is filtered out on the basis of its fitness function score. </br>
   2. _Enumeration_ of a candidate pool of allocations. </br>
   3. _Restriction_ of the pool of allocations to those that meet the criteria </br>
-  4. _Evaluation & Adaptation_ of the specified inspection metrics, fitness function, and decision rule, if needed. 
+  4. _Evaluation & Adaptation_ of the specified inspection metrics, fitness function, and restriction rule, if needed. 
   5. _Pre-registration_ of the restricted assignment mechanism. </br>
   6. _Randomization_ of the allocation drawn for the official experiment </br>
 
