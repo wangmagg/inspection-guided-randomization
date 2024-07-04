@@ -554,7 +554,7 @@ def interference_err_scatter(
                 all_jnt_grids.append(jnt_grid)
 
             # Set y-axis limits to be the same for all joint grids
-            adjust_joint_grid_limits(all_jnt_grids, fig_dir, save_fnames)
+            adjust_joint_grid_limits(all_jnt_grids)
 
             # Save joint grids
             save_fnames = [
