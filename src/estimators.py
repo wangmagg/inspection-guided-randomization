@@ -85,7 +85,7 @@ def get_cluster_mask(z_cluster, mapping):
     return cluster_mask
 
 
-def qb_diff_in_means_mult_arm(z, y_obs, blocks, n_blocks, weights, comps):
+def qb_diff_in_means_mult_arm(z, y_obs,  comps, blocks, n_blocks, weights):
     """
     Get the difference-in-means treatment effect estimate for multi-arm experiment with threshold blocking randomization
     Args:
@@ -159,6 +159,25 @@ def get_pval_qb(z_pool, y_obs_pool, idx, blocks, n_blocks, weights, comps):
             )
             for z in z_pool
         ]
+    )
+
+    return np.mean(abs(t_null) >= abs(t_obs), axis=0)
+
+
+def get_pval(z_pool, y_obs_pool, idx, comps, est_fn, **kwargs):
+    """
+    Get p-value for treatment effect estimate
+    Args:
+        - z_pool: Pool of possible treatment assignment vectors
+        - y_obs_pool: Pool of observed outcomes corresponding to z_pool
+        - idx: Index of the "observed" assignment vector
+        - comps: List of pairs of arms to compare
+        - est_fn: Function to estimate treatment effect
+        - **kwargs: Additional arguments for est_fn
+    """
+    t_obs = est_fn(z_pool[idx, :], y_obs_pool[idx, :], comps, **kwargs)
+    t_null = np.array(
+        [est_fn(z, y_obs_pool[idx, :], comps, **kwargs) for z in z_pool]
     )
 
     return np.mean(abs(t_null) >= abs(t_obs), axis=0)

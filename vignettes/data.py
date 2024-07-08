@@ -91,7 +91,7 @@ def gen_composition_data(
     ability = (
         (age - np.mean(age)) / np.std(age)
         - (major == 1)
-        - gender
+        - 0.5 * gender
         + rng.normal(0, sigma, n_students)
     )
     confidence = gender + (major == 2) + rng.normal(0, sigma, n_students)
@@ -101,7 +101,7 @@ def gen_composition_data(
     y = y_0 + tau_sizes[:, np.newaxis] * np.std(y_0)
 
     X_df = pd.DataFrame.from_dict(
-        {"gender": gender, "age": age, "major": major, "ability": ability, "hw": hw}
+        {"gender": gender, "age": age, "major": major, "hw": hw, "ability": ability, "confidence": confidence}
     )
 
     return y, X_df

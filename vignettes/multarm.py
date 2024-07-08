@@ -15,9 +15,8 @@ from src.aesthetics import setup_fig
 from src.estimators import (
     get_tau_true, 
     diff_in_means_mult_arm, 
-    get_pval_mult_arm, 
     qb_diff_in_means_mult_arm, 
-    get_pval_qb
+    get_pval
 )
 from src.igr import igr_enumeration, igr_restriction
 from src.igr_checks import discriminatory_power, overrestriction
@@ -231,14 +230,12 @@ def run_trial_and_analyze(
                       "n_blocks": len(np.unique(blocks)), 
                       "weights": np.bincount(blocks) / len(blocks)}
             tau_hat_fn = qb_diff_in_means_mult_arm
-            p_val_fn = get_pval_qb
         else:
             kwargs = {}
             tau_hat_fn = diff_in_means_mult_arm
-            p_val_fn = get_pval_mult_arm
             
         tau_hat = np.array([tau_hat_fn(z, y_obs, comps=comps, **kwargs) for z, y_obs in zip(z_accepted, y_obs_accepted)])
-        p_val = Parallel(n_jobs=-1, verbose=1)(delayed(p_val_fn)(z_accepted, y_obs_accepted, idx, comps=comps, **kwargs)
+        p_val = Parallel(n_jobs=-1, verbose=1)(delayed(get_pval)(z_accepted, y_obs_accepted, idx, comps=comps, est_fn=tau_hat_fn, **kwargs)
                                                for idx in tqdm(range(z_accepted.shape[0])))
 
         # Compute bias, RMSE, and rejection rate
