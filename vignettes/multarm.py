@@ -50,7 +50,7 @@ def multarm_config():
     parser.add_argument("--min-block-factor", type=int, default=2)
     parser.add_argument("--qb-dir", type=str, default="qb")
 
-    parser.add_argument("--out-dir", type=str, default="res/vig1_multarm")
+    parser.add_argument("--out-dir", type=str, default="res/vig0_multarm")
 
     args = parser.parse_args()
 

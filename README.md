@@ -51,7 +51,7 @@ conda activate cbr-env
 
 ## Usage
 ### Running Vignettes
-#### 1. Multi-arm Experiments ####
+#### 0. Multi-arm Experiments ####
 
 In a multi-arm experiment, we simultaneously evaluate multiple interventions and make pairwise comparisons between arms to estimate treatment effects. A well-designed experiment in this setting has covariates balanced across all pairs of arms that will be compared in the analysis phase of the experiment. To use IGR, we construct and apply multi-arm balance inspection metrics.
 
@@ -62,9 +62,9 @@ For convenience, we provide bash scripts that run the experiment for multiple da
 bash scripts/multarm.sh
 ```
 
-Running this script creates a ```res/vig1_multarm``` directory that stores results and figures.
+Running this script creates a ```res/0_multarm``` directory that stores results and figures.
 
-#### 2. Group Formation Experiments ####
+#### 1. Group Formation Experiments ####
 
 In a group formation experiment, we randomize individuals into different groups of certain compositions. For example, a group may be the set of college freshmen assigned to the same dorm room, and composition may be the number of individuals in a room who were “high academic achievers” in high school. As in the multi-arm setting, we would like to make pairwise comparisons between groups of different compositions. A well-designed experiment in this setting has groups balanced on all observed covariates other than salient attributes that are used to define composition. To use IGR, we can apply multi-arm balance metrics, excluding the composition-related attributes, and an indicator metric for whether the desired group compositions are formed.
 
@@ -76,9 +76,9 @@ For convenience, we provide bash scripts that run the experiment for multiple da
 bash scripts/composition.sh
 ```
 
-Running these scripts creates a ```res/vig2_composition``` directory that stores results and figures.
+Running these scripts creates a ```res/vig1_composition``` directory that stores results and figures.
 
-#### 3. Experiments with Network Interference #
+#### 2. Experiments with Network Interference #
 
 Interference occurs when the treatment assigned to one individual affects the outcome of a different individual. A common target estimand in experiments with interference is the total treatment effect, or the difference in outcomes if everyone were to receive treatment compared to if everyone were to receive control.  Failing to properly account for interference can make estimates of the total treatment effect both biased and imprecise. A well-designed experiment in this setting controls spillover while also maintaining inter-cluster balance on covariates. In the IGR design framework, we can apply fitness functions that combine interference-related metrics with balance metrics.
 
@@ -89,6 +89,6 @@ For convenience, we provide bash scripts that run the experiment for multiple da
 ```
 bash scripts/interference.sh 
 ```
-Running these scripts creates a ```res/vig3_interference``` directory that stores results and figures.
+Running these scripts creates a ```res/vig2_interference``` directory that stores results and figures.
 
 

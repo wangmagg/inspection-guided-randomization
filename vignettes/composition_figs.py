@@ -8,7 +8,7 @@ from vignettes.multarm_figs import multarm_bal_boxplot, multarm_pairwise_bal_box
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--out-dir", type=str, default="res/vig2_composition")
+    parser.add_argument("--out-dir", type=str, default="res/vig1_composition")
     parser.add_argument("--n-enum", type=int, default=int(1e5))
     parser.add_argument("--n-accept", type=int, default=500)
     parser.add_argument("--rhos", type=float, nargs="+", default=[0.5, 0.3, 0.7])

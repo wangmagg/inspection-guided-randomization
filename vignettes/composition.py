@@ -56,7 +56,7 @@ def composition_config():
     parser.add_argument("--mut-rate", type=float, default=0.01)
     parser.add_argument("--eps", type=float, default=0.1)
 
-    parser.add_argument("--out-dir", type=str, default="res/vig2_composition")
+    parser.add_argument("--out-dir", type=str, default="res/vig1_composition")
 
     args = parser.parse_args()
 

@@ -63,7 +63,7 @@ def interference_config():
     parser.add_argument("--mut-rate", type=float, default=0.01)
     parser.add_argument("--eps", type=float, default=0.05)
 
-    parser.add_argument("--out-dir", type=str, default="res/vig3_interference")
+    parser.add_argument("--out-dir", type=str, default="res/vig2_interference")
 
     args = parser.parse_args()
     

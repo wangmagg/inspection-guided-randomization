@@ -453,7 +453,7 @@ def multarm_rmse_rr_vs_enum(
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--out-dir", type=str, default="res/vig1_multarm")
+    parser.add_argument("--out-dir", type=str, default="res/vig0_multarm")
     parser.add_argument("--qb-dir", type=str, default="qb")
     parser.add_argument("--n-stu", type=int, default=80)
     parser.add_argument("--n-arms", type=int, default=4)
