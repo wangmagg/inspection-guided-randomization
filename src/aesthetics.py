@@ -127,7 +127,7 @@ def setup_fig(ncols: int, sharex: bool, sharey: bool, cbar: bool = False) -> tup
     fig, axs = plt.subplots(
         1,
         ncols,
-        figsize=(8 * ncols, 8),
+        figsize=(6 * ncols, 6),
         sharex=sharex,
         sharey=sharey,
     )
@@ -136,7 +136,8 @@ def setup_fig(ncols: int, sharex: bool, sharey: bool, cbar: bool = False) -> tup
     if ncols == 1:
         axs = [axs]
     for ax in axs:
-        ax.tick_params(axis="both", which="major", labelsize=16)
+        ax.tick_params(axis="both", which="major", length=6, width=1.5, labelsize=20)
+        ax.tick_params(axis="both", which="minor", length=3, width=1, labelsize=16)
 
     return fig, axs
 

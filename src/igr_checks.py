@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 from typing import List, Dict
 
 from src.aesthetics import (
@@ -37,8 +38,8 @@ def discriminatory_power(
         - agg_kwargs: Keyword arguments for aggregation function, if applicable
     """
     scores_dict = {
-        r"IGR $\mathcal{Z}_{pool}$": scores_1,
-        r"IGRg $\mathcal{Z}^{*}_{pool}$": scores_1_g,
+        r"$\mathcal{Z}_{pool}$": scores_1,
+        r"$\mathcal{Z}^{*}_{pool}$": scores_1_g,
     }
 
     # Get cutoff scores for the accepted allocations
@@ -56,8 +57,8 @@ def discriminatory_power(
         scores_g = scores_stacked[scores_1.shape[0]:]
         score_g_cutoff = np.sort(scores_g)[n_accept]
         scores_dict = {
-            r"IGR $\mathcal{Z}_{pool}$": scores,
-            r"IGRg $\mathcal{Z}^{*}_{pool}$": scores_g,
+            r"$\mathcal{Z}_{pool}$": scores,
+            r"$\mathcal{Z}^{*}_{pool}$": scores_g,
         }
 
     scores_df = pd.DataFrame(scores_dict).melt(
@@ -66,8 +67,8 @@ def discriminatory_power(
 
     # Make histogram of scores with vertical lines at cutoffs
     palette = {
-        r"IGR $\mathcal{Z}_{pool}$": "silver",
-        r"IGRg $\mathcal{Z}^{*}_{pool}$": "dimgrey",
+        r"$\mathcal{Z}_{pool}$": "silver",
+        r"$\mathcal{Z}^{*}_{pool}$": "dimgrey",
     }
     sns.histplot(
         scores_df,
@@ -95,40 +96,40 @@ def discriminatory_power(
     ax.axvline(score_cutoff, color=vline_clr, linewidth=1.5)
     ax.text(
         x=score_cutoff * igr_pad,
-        y=0.99,
+        y=0.98,
         s="IGR s*",
         color=vline_clr,
         ha=igr_ha,
         va="top",
         rotation=90,
         transform=ax.get_xaxis_transform(),
-        fontsize=20,
+        fontsize=26,
     )
     vline_g_clr = design_color_mapping("IGRg", fitness_lbl)
     ax.axvline(score_g_cutoff, color=vline_g_clr, linewidth=1.5)
     ax.text(
         x=score_g_cutoff * igr_g_pad,
-        y=0.99,
+        y=0.98,
         s="IGRg s*",
         color=vline_g_clr,
         ha=igr_g_ha,
         va="top",
         rotation=90,
         transform=ax.get_xaxis_transform(),
-        fontsize=20,
+        fontsize=26,
     )
 
     # Format plot
     fitness_lbl_terms = fitness_lbl.split(" + ")
     if len(fitness_lbl_terms) > 1:
         fitness_lbl = " +\n".join(fitness_lbl_terms)
-    ax.set_title(fitness_lbl, fontsize=22, pad=20)
-    ax.set_xlabel(r"$f(\mathbf{z})$", fontsize=20, loc="right")
-    ax.set_ylabel("Number of Allocations", fontsize=20)
+    ax.set_title(fitness_lbl, fontsize=28, pad=20)
+    ax.set_xlabel(r"$f(\mathbf{z})$", fontsize=26, loc="right")
+    ax.set_ylabel("Number of Allocations", fontsize=26)
     ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-    ax.tick_params(axis="x", which="minor", rotation=30, labelsize=12)
-    ax.tick_params(axis="both", which="major", labelsize=20)
-    ax.yaxis.get_offset_text().set_fontsize(18)
+    ax.tick_params(axis="x", which="minor", rotation=30, labelsize=18)
+    ax.tick_params(axis="both", which="major", labelsize=26)
+    ax.yaxis.get_offset_text().set_fontsize(24)
 
     legend = ax.legend_
     handles = legend.legend_handles
@@ -137,7 +138,7 @@ def discriminatory_power(
         handles=handles,
         labels=labels,
         title=None,
-        fontsize=20,
+        fontsize=26,
         handlelength=1,
         handletextpad=0.4,
         borderpad=0.2,
@@ -188,15 +189,15 @@ def desiderata_tradeoffs(
     jnt_grid.plot_marginals(sns.kdeplot, fill=True, alpha=0.3)
 
     # Format plot
-    jnt_grid.set_axis_labels(metric_lbls[0], metric_lbls[1], fontsize=18)
-    jnt_grid.figure.suptitle(" +\n".join(fitness_lbl.split(" + ")), fontsize=22)
+    jnt_grid.set_axis_labels(metric_lbls[0], metric_lbls[1], fontsize=22)
+    jnt_grid.figure.suptitle(" +\n".join(fitness_lbl.split(" + ")), fontsize=26)
     jnt_grid.figure.subplots_adjust(top=0.85)
 
-    jnt_grid.ax_joint = format_ax(jnt_grid.ax_joint, lbl_size=14)
+    jnt_grid.ax_joint = format_ax(jnt_grid.ax_joint, lbl_size=20)
     jnt_grid.ax_joint.legend(
         title=None,
         markerscale=1.5,
-        fontsize=14,
+        fontsize=20,
         handlelength=1,
         labelspacing=0.2,
         handletextpad=0.2,
@@ -230,14 +231,14 @@ def desiderata_tradeoffs_pool(
         cmap=sns.color_palette("flare", as_cmap=True)
     )
     ax = format_ax(ax, lbl_size=20)
-    ax.set_xlabel(metric_lbls[0], fontsize=22)
-    ax.set_ylabel(metric_lbls[1], fontsize=22)
+    ax.set_xlabel(metric_lbls[0], fontsize=26)
+    ax.set_ylabel(metric_lbls[1], fontsize=26)
 
     cbar = dt_fig.collections[0].colorbar
-    cbar.ax.tick_params(axis="y", labelsize=20)
+    cbar.ax.tick_params(axis="y", labelsize=26)
 
     if title:
-        ax.set_title(title, fontsize=24)
+        ax.set_title(title, fontsize=28)
 
 def overrestriction(
         fitness_lbl: str, 
@@ -300,13 +301,14 @@ def overrestriction(
     fitness_lbl_terms = fitness_lbl.split(" + ")
     if len(fitness_lbl_terms) > 1:
         fitness_lbl = " +\n".join(fitness_lbl_terms)
-    ax.set_title(fitness_lbl, fontsize=22)
+    ax.set_title(fitness_lbl, fontsize=26)
     if gfr:
-        ax.set_xlabel(r"$\hat{P}(z_i = z_j, g_i = g_j)$", fontsize=20)
+        ax.set_xlabel(r"$\hat{P}(z_i = z_j, g_i = g_j)$", fontsize=26)
     else:
-        ax.set_xlabel(r"$\hat{P}(z_i = z_j)$", fontsize=20)
-    ax.set_ylabel(r"Fraction of Pairs $(i, j)$", fontsize=20)
-    ax.tick_params(axis="both", which="major", labelsize=20)
+        ax.set_xlabel(r"$\hat{P}(z_i = z_j)$", fontsize=26)
+    ax.set_ylabel(r"Fraction of Pairs $(i, j)$", fontsize=26)
+    ax.yaxis.set_major_formatter(StrMethodFormatter("{x:,.2f}"))
+    ax.tick_params(axis="both", which="major", labelsize=26)
 
     legend = ax.legend_
     handles = legend.legend_handles
@@ -317,7 +319,7 @@ def overrestriction(
     ax.legend(
         handles=handles,
         labels=labels,
-        fontsize=16,
+        fontsize=26,
         handlelength=1,
         handletextpad=0.4,
         borderpad=0.2,

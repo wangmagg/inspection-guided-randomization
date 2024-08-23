@@ -67,7 +67,7 @@ def multarm_bal_boxplot(
     df = pd.melt(df, id_vars=['design'], var_name='Covariate', value_name='MaxSMD')
     
     # Create boxplot
-    fig, ax = plt.subplots(1, 1, figsize=(3*len(cov_names), 6))
+    fig, ax = plt.subplots(1, 1, figsize=(2*len(cov_names), 4))
     sns.boxplot(
         data=df,
         x="Covariate",
@@ -79,10 +79,10 @@ def multarm_bal_boxplot(
         ax=ax,
     )
     ax.axhline(0, color="black", linestyle="--")
-    ax.set_xlabel("Covariate", fontsize=18)
-    ax.set_ylabel("MaxSMD", fontsize=18)
-    ax.tick_params(axis='x', labelsize=16)
-    ax.tick_params(axis='y', labelsize=16)
+    ax.set_xlabel("Covariate", fontsize=26)
+    ax.set_ylabel("MaxSMD", fontsize=26)
+    ax.tick_params(axis='x', labelsize=20, length=6, width=1.5)
+    ax.tick_params(axis='y', labelsize=20, length=6, width=1.5)
 
     # Add legend
     legend = ax.legend_
@@ -92,7 +92,7 @@ def multarm_bal_boxplot(
         handles=handles,
         labels=labels,
         title=None,
-        fontsize=14,
+        fontsize=20,
         bbox_to_anchor=(0.5, -0.5),
         loc="lower center",
         ncol=len(designs) // 2,
@@ -156,11 +156,17 @@ def multarm_pairwise_bal_boxplot(
                 smd_df['group_comp'] = f"{comp[0]} vs {comp[1]}"
                 all_df_list.append(smd_df)
 
+            max_smd = SignedMaxAbsSMD(z_accepted, n_arms, comps, X)
+            max_smd_df = pd.DataFrame(max_smd, columns=cov_names)
+            max_smd_df['design'] = design
+            max_smd_df['group_comp'] = "Max"
+            all_df_list.append(max_smd_df)
+
     # Combine results into a single dataframe
     df = pd.concat(all_df_list)
 
     # Set up boxplot
-    fig, axs = plt.subplots(1, len(cov_names), figsize=(5 * len(cov_names), 5), sharey=True, sharex=True)
+    fig, axs = plt.subplots(1, len(cov_names), figsize=(3 * len(cov_names), 5), sharey=True, sharex=True)
     hue_order = get_design_hue_order(df['design'].unique())
     palette = get_design_palette(df['design'].unique())
 
@@ -173,20 +179,21 @@ def multarm_pairwise_bal_boxplot(
             x=cov,
             hue="design",
             hue_order=hue_order,
+            order=["Max"] + [f"{comp[0]} vs {comp[1]}" for comp in comps],
             palette=palette,
-            width=0.75,
-            linewidth=0.75,
-            fliersize=1,
+            width=0.85,
+            linewidth=1,
+            fliersize=1.5,
             ax=ax,
         )
-        ax.axvline(0, color="black", linestyle="--")
+        ax.axvline(0, color="black", linestyle="--", linewidth=1)
 
-        ax.set_title(f"{cov}".capitalize(), fontsize=20)
-        ax.set_xlim(-1, 1)
-        ax.set_xlabel(f"SMD", fontsize=18)
-        ax.set_ylabel(f"Group Comparison", fontsize=18)
-        ax.tick_params(axis="x", labelsize=16)
-        ax.tick_params(axis="y", labelsize=16)
+        ax.set_title(f"{cov}".capitalize(), fontsize=24)
+        ax.set_xlim(-1.2, 1.2)
+        ax.set_xlabel(f"SMD", fontsize=22)
+        ax.set_ylabel(f"Group Comparison", fontsize=22)
+        ax.tick_params(axis="x", labelsize=20, length=6, width=1.5)
+        ax.tick_params(axis="y", labelsize=20, length=6, width=1.5)
         ax.get_legend().set_visible(False)
     
     # Add legend
@@ -198,7 +205,7 @@ def multarm_pairwise_bal_boxplot(
         handles,
         labels,
         title=None,
-        fontsize=14,
+        fontsize=18,
         loc=loc,
         bbox_to_anchor=bbox_to_anchor,
         ncol=ncol,
@@ -311,11 +318,11 @@ def multarm_err_scatter(
         jnt_grid.plot_marginals(sns.kdeplot, fill=True, alpha=0.3)
 
         # Format plot
-        jnt_grid.figure.suptitle(f"{metric_lbl}", fontsize=20)
+        jnt_grid.figure.suptitle(f"{metric_lbl}", fontsize=24)
         jnt_grid.figure.subplots_adjust(top=0.85)
 
-        jnt_grid.ax_joint.set_xlabel(r"$f(\mathbf{z})$", fontsize=20, loc="right")
-        jnt_grid.ax_joint.set_ylabel(r"$SE_{\hat{\tau}}$", fontsize=20)
+        jnt_grid.ax_joint.set_xlabel(r"$f(\mathbf{z})$", fontsize=24, loc="right")
+        jnt_grid.ax_joint.set_ylabel(r"$SE_{\hat{\tau}}$", fontsize=24)
         jnt_grid.ax_joint.set_xlim(0, jnt_grid.ax_joint.get_xlim()[1])
         jnt_grid.ax_joint.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
         jnt_grid.ax_joint.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
@@ -325,7 +332,7 @@ def multarm_err_scatter(
         jnt_grid.ax_joint.legend(
             title=None,
             markerscale=1.5,
-            fontsize=14,
+            fontsize=18,
             handlelength=1,
             labelspacing=0.2,
             handletextpad=0.2,
@@ -397,10 +404,10 @@ def multarm_rmse_rr_vs_enum(
             hue_order=hue_order,
             errorbar=None,
         )
-        axs[0][i].set_title(f"m = {n_accept}", fontsize=16)
+        axs[0][i].set_title(f"m = {n_accept}", fontsize=20)
         axs[0][i].set_xlabel("")
-        axs[0][i].set_ylabel("% CR RMSE", fontsize=16)
-        axs[0][i].tick_params(axis='y', which='major', labelsize=16)
+        axs[0][i].set_ylabel("% CR RMSE", fontsize=20)
+        axs[0][i].tick_params(axis='y', which='major', labelsize=20)
 
         # Plot rejection rate
         res_subdf = res_df[(res_df["n_accept"] == n_accept)]
@@ -432,16 +439,16 @@ def multarm_rmse_rr_vs_enum(
             hue_order=hue_order,
             errorbar=None,
         )
-        axs[1][i].set_xlabel("M", fontsize=16)
-        axs[1][i].set_ylabel("Rejection Rate", fontsize=16)
-        axs[1][i].tick_params(axis='both', which='major', labelsize=16)
+        axs[1][i].set_xlabel("M", fontsize=20)
+        axs[1][i].set_ylabel("Rejection Rate", fontsize=20)
+        axs[1][i].tick_params(axis='both', which='major', labelsize=20)
         axs[1][i].ticklabel_format(axis="x", style="sci", scilimits=(0, 0), useMathText=True)
         axs[1][i].xaxis.set_major_locator(MaxNLocator(integer=True, nbins=5))
 
         # Add legend
         if i == len(n_accepts) - 1:
             axs[0][i].get_legend().remove()
-            axs[1][i].legend(bbox_to_anchor=(0.1, -0.2), ncol=3, fontsize=14)
+            axs[1][i].legend(bbox_to_anchor=(0.1, -0.2), ncol=3, fontsize=18)
         else:
             axs[0][i].get_legend().remove()
             axs[1][i].get_legend().remove()

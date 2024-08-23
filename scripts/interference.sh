@@ -75,4 +75,4 @@ do
 done
 
 # figs
-python3 -m vignettes.interference --n-enum 100000 --n-accept 500 --mirror-type all --tau-size 0.3
+python3 -m vignettes.interference_figs --n-enum 100000 --n-accept 500 --mirror-type all --tau-size 0.3

@@ -97,7 +97,7 @@ def interference_bias_var_rr_vs_weight(
     )
 
     # Set up figure
-    fig, ax = plt.subplots(1, 3, figsize=(24, 8), sharex=True)
+    fig, ax = plt.subplots(1, 3, figsize=(18, 6), sharex=True)
     palette = get_design_palette(res_igr["design_no_weights"].unique())
     hue_order = get_design_hue_order(res_igr["design_no_weights"].unique())
 
@@ -130,11 +130,11 @@ def interference_bias_var_rr_vs_weight(
         ax=ax[0],
         errorbar=None,
     )
-    ax[0].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
-    ax[0].set_ylabel("% CR Bias", fontsize=18)
+    ax[0].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=22)
+    ax[0].set_ylabel("% CR Bias", fontsize=22)
     ax[0].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
-    ax[0].tick_params(axis="x", labelsize=16)
-    ax[0].tick_params(axis="y", labelsize=16)
+    ax[0].tick_params(axis="x", labelsize=20)
+    ax[0].tick_params(axis="y", labelsize=20)
     ax[0].get_legend().set_visible(False)
 
     # Plot variance
@@ -166,11 +166,11 @@ def interference_bias_var_rr_vs_weight(
         ax=ax[1],
         errorbar=None,
     )
-    ax[1].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
-    ax[1].set_ylabel("% CR Variance", fontsize=18)
+    ax[1].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=22)
+    ax[1].set_ylabel("% CR Variance", fontsize=22)
     ax[1].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
-    ax[1].tick_params(axis="x", labelsize=16)
-    ax[1].tick_params(axis="y", labelsize=16)
+    ax[1].tick_params(axis="x", labelsize=20)
+    ax[1].tick_params(axis="y", labelsize=20)
     ax[1].get_legend().set_visible(False)
 
     # Plot rejection rate
@@ -210,10 +210,10 @@ def interference_bias_var_rr_vs_weight(
         ax=ax[2],
         errorbar=None,
     )
-    ax[2].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=18)
-    ax[2].set_ylabel("Rejection Rate", fontsize=18)
-    ax[2].tick_params(axis="x", labelsize=16)
-    ax[2].tick_params(axis="y", labelsize=16)
+    ax[2].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=22)
+    ax[2].set_ylabel("Rejection Rate", fontsize=22)
+    ax[2].tick_params(axis="x", labelsize=20)
+    ax[2].tick_params(axis="y", labelsize=20)
     ax[2].get_legend().set_visible(False)
 
     # Add legend
@@ -224,7 +224,7 @@ def interference_bias_var_rr_vs_weight(
         handles,
         labels,
         title=None,
-        fontsize=16,
+        fontsize=20,
         bbox_to_anchor=bbox_to_anchor,
         ncol=ncol,
         edgecolor="black",
@@ -233,6 +233,7 @@ def interference_bias_var_rr_vs_weight(
     # Save figure
     save_fname = "bias_rmse_rr_vs_weight.svg"
     save_path = fig_dir / save_fname
+    fig.tight_layout()
     fig.savefig(save_path, bbox_inches="tight", transparent=True)
 
 
@@ -279,7 +280,7 @@ def interference_bias_var_rr_vs_enum(
         fig, axs = plt.subplots(
             3,
             len(n_accepts),
-            figsize=(6 * len(n_accepts), 18),
+            figsize=(4 * len(n_accepts), 12),
             sharey="row",
             sharex="all",
         )
@@ -322,10 +323,10 @@ def interference_bias_var_rr_vs_enum(
                 hue_order=hue_order,
                 errorbar=None,
             )
-            axs[0][i].set_title(f"m = {n_accept}", fontsize=16)
+            axs[0][i].set_title(f"m = {n_accept}", fontsize=20)
             axs[0][i].set_xlabel("")
-            axs[0][i].set_ylabel("% CR Bias", fontsize=16)
-            axs[0][i].tick_params(axis="y", which="major", labelsize=16)
+            axs[0][i].set_ylabel("% CR Bias", fontsize=20)
+            axs[0][i].tick_params(axis="y", which="major", labelsize=20)
             axs[0][i].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
             axs[0][i].get_legend().set_visible(False)
 
@@ -363,8 +364,8 @@ def interference_bias_var_rr_vs_enum(
                 errorbar=None,
             )
             axs[1][i].set_xlabel("")
-            axs[1][i].set_ylabel("% CR Variance", fontsize=16)
-            axs[1][i].tick_params(axis="y", which="major", labelsize=16)
+            axs[1][i].set_ylabel("% CR Variance", fontsize=20)
+            axs[1][i].tick_params(axis="y", which="major", labelsize=20)
             axs[1][i].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
             axs[1][i].get_legend().set_visible(False)
 
@@ -397,9 +398,9 @@ def interference_bias_var_rr_vs_enum(
                 errorbar=None,
                 ax=axs[2][i],
             )
-            axs[2][i].set_xlabel("M", fontsize=16)
-            axs[2][i].set_ylabel("Rejection Rate", fontsize=16)
-            axs[2][i].tick_params(axis="both", which="major", labelsize=16)
+            axs[2][i].set_xlabel("M", fontsize=20)
+            axs[2][i].set_ylabel("Rejection Rate", fontsize=20)
+            axs[2][i].tick_params(axis="both", which="major", labelsize=20)
             axs[2][i].ticklabel_format(
                 axis="x", style="sci", scilimits=(0, 3), useMathText=True
             )
@@ -414,7 +415,7 @@ def interference_bias_var_rr_vs_enum(
             handles,
             labels,
             title=None,
-            fontsize=16,
+            fontsize=20,
             bbox_to_anchor=bbox_to_anchor,
             loc="lower center",
             ncol=ncol,
@@ -531,12 +532,12 @@ def interference_err_scatter(
                 jnt_grid.plot_marginals(sns.kdeplot, fill=True, alpha=0.3)
 
                 # Format joint grid
-                jnt_grid.figure.suptitle(f"{fitness_lbl}", fontsize=20)
+                jnt_grid.figure.suptitle(f"{fitness_lbl}", fontsize=24)
                 jnt_grid.figure.subplots_adjust(top=0.85)
                 jnt_grid.ax_joint.set_xlabel(
-                    r"$f(\mathbf{z})$", fontsize=20, loc="right"
+                    r"$f(\mathbf{z})$", fontsize=24, loc="right"
                 )
-                jnt_grid.ax_joint.set_ylabel(r"$\hat{\tau} - \tau$", fontsize=20)
+                jnt_grid.ax_joint.set_ylabel(r"$\hat{\tau} - \tau$", fontsize=24)
                 jnt_grid.ax_joint.set_xlim(0, jnt_grid.ax_joint.get_xlim()[1])
                 format_ax(jnt_grid.ax_joint)
 
@@ -544,7 +545,7 @@ def interference_err_scatter(
                 jnt_grid.ax_joint.legend(
                     title=None,
                     markerscale=1.5,
-                    fontsize=14,
+                    fontsize=18,
                     handlelength=1,
                     labelspacing=0.2,
                     handletextpad=0.2,
