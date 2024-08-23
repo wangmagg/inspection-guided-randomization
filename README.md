@@ -23,7 +23,7 @@ __Python dependencies__ <br />
 Python dependencies are specified in `env/requirements.txt`. To set up and activate a Conda environment with the requisite dependicies, run the following <br />
 ```
 conda env create -f env/environment.yml
-conda activate cbr-env
+conda activate igr-env
 ```
 
 ## File Structure
