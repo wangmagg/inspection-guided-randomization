@@ -211,6 +211,8 @@ def multarm_pairwise_bal_boxplot(
         ncol=ncol,
         edgecolor="black",
     )
+    fig.suptitle("Pairwise Per-Covariate Balance", fontsize=26, fontweight="demibold")
+    fig.tight_layout(rect=[0, 0, 1, 0.92])
 
     # Save figure
     save_path = fig_dir / "pairwise_bal_boxplot.svg"

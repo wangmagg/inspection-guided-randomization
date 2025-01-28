@@ -107,7 +107,7 @@ def SumMaxAbsSMD(z_pool: np.ndarray, n_arms: np.ndarray, comps: np.ndarray, X: n
     )
     return np.array(vals)
 
-def _max_mahalanobis(z: np.ndarray, n_arms: int, comps: np.ndarray, X: np.ndarray, S_hat_inv: np.ndarray) -> float:
+def _mahalanobis(z: np.ndarray, n_arms: int, comps: np.ndarray, X: np.ndarray, S_hat_inv: np.ndarray) -> float:
     """
     Calculate the maximum Mahalanobis distance between means of pairs of arms
     Args:
@@ -123,7 +123,7 @@ def _max_mahalanobis(z: np.ndarray, n_arms: int, comps: np.ndarray, X: np.ndarra
     return np.max(dists)
 
 
-def MaxMahalanobis(z_pool, n_arms, comps, X, cluster_lbls=None, n_jobs=-2) -> np.ndarray:
+def Mahalanobis(z_pool, n_arms, comps, X, cluster_lbls=None, n_jobs=-2) -> np.ndarray:
     """
     Calculate the maximum Mahalanobis distance between means of pairs of arms for each candidate treatment allocation in pool
     Args:
@@ -142,7 +142,7 @@ def MaxMahalanobis(z_pool, n_arms, comps, X, cluster_lbls=None, n_jobs=-2) -> np
     S_hat_inv = np.linalg.pinv(S_hat) 
 
     vals = Parallel(n_jobs=n_jobs, verbose=1)(
-        delayed(_max_mahalanobis)(z, n_arms, comps, X, S_hat_inv) for z in z_pool
+        delayed(_mahalanobis)(z, n_arms, comps, X, S_hat_inv) for z in z_pool
     )
     return np.array(vals)
 
@@ -203,8 +203,8 @@ def get_metric(metric_name: str) -> callable:
     """
     if metric_name == "SumMaxAbsSMD":
         metric_fn = SumMaxAbsSMD
-    elif metric_name == "MaxMahalanobis":
-        metric_fn = MaxMahalanobis
+    elif metric_name == "Mahalanobis":
+        metric_fn = Mahalanobis
     elif metric_name == "FracExpo":
         metric_fn = FracExpo
     elif metric_name == "InvMinEuclidDist":

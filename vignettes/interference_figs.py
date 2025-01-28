@@ -12,10 +12,8 @@ from src.aesthetics import (
     get_design_hue_order,
     format_ax,
     adjust_joint_grid_limits,
-    save_joint_grids,
-    setup_fig,
+    save_joint_grids
 )
-from src.igr_checks import discriminatory_power, overrestriction
 from src.aggregators import LinComb
 
 
@@ -62,7 +60,14 @@ def _strip_weights_from_design(design: str) -> str:
 
 
 def interference_bias_var_rr_vs_weight(
-    n_enum: int, n_accept:int, tau_size: float, mirror_type: str, res_dir: Path, fig_dir: Path
+    n_enum: int,
+    i_metrics: list[str],
+    n_accept: int,
+    tau_size: float,
+    mirror_type: str,
+    estimator: str,
+    res_dir: Path,
+    fig_dir: Path,
 ) -> None:
     """
     Make lineplot of bias, variance, and rejection rate versus the weight applied to the balance metric
@@ -85,16 +90,18 @@ def interference_bias_var_rr_vs_weight(
         & (res["n_accept"] == n_accept)
         & (res["tau_size"] == tau_size)
         & (res["mirror_type"] == mirror_type)
+        & (res["estimator"] == estimator)
     ]
     res_igr = res[res["design"].str.contains("IGR")]
     res_igr = res_igr.assign(
         igr_type=res_igr["design"].apply(lambda x: _parse_design(x)[0]),
         fitness_lbl=res_igr["design"].apply(lambda x: _parse_design(x)[1]),
-        w_balance=res_igr["design"].apply(lambda x: _parse_design(x)[4]),
+        w_interf=res_igr["design"].apply(lambda x: _parse_design(x)[-1]),
         design_no_weights=res_igr["design"].apply(
             lambda x: _strip_weights_from_design(x)
         ),
     )
+    res_igr = res_igr[res_igr["design"].str.contains("|".join(i_metrics))]
 
     # Set up figure
     fig, ax = plt.subplots(1, 3, figsize=(18, 6), sharex=True)
@@ -104,7 +111,7 @@ def interference_bias_var_rr_vs_weight(
     # Plot bias
     sns.lineplot(
         data=res_igr,
-        x="w_balance",
+        x="w_interf",
         y="perc_CR_bias",
         hue="design_no_weights",
         linewidth=1,
@@ -118,7 +125,7 @@ def interference_bias_var_rr_vs_weight(
     )
     sns.lineplot(
         data=res_igr,
-        x="w_balance",
+        x="w_interf",
         y="perc_CR_bias",
         hue="design_no_weights",
         marker="o",
@@ -130,7 +137,7 @@ def interference_bias_var_rr_vs_weight(
         ax=ax[0],
         errorbar=None,
     )
-    ax[0].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=22)
+    ax[0].set_xlabel(r"$w_{Interference}$", fontsize=22)
     ax[0].set_ylabel("% CR Bias", fontsize=22)
     ax[0].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
     ax[0].tick_params(axis="x", labelsize=20)
@@ -140,8 +147,8 @@ def interference_bias_var_rr_vs_weight(
     # Plot variance
     sns.lineplot(
         data=res_igr,
-        x="w_balance",
-        y="perc_CR_var",
+        x="w_interf",
+        y="var",
         hue="design_no_weights",
         linewidth=1,
         alpha=0.5,
@@ -154,8 +161,8 @@ def interference_bias_var_rr_vs_weight(
     )
     sns.lineplot(
         data=res_igr,
-        x="w_balance",
-        y="perc_CR_var",
+        x="w_interf",
+        y="var",
         hue="design_no_weights",
         marker="o",
         markersize=4,
@@ -166,9 +173,12 @@ def interference_bias_var_rr_vs_weight(
         ax=ax[1],
         errorbar=None,
     )
-    ax[1].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=22)
-    ax[1].set_ylabel("% CR Variance", fontsize=22)
-    ax[1].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
+    cr_var = res[res["design"] == "CR"]["var"]
+    ax[1].axhline(cr_var.mean(), color=design_color_mapping("CR"), linewidth=3, label="CR")
+    for var in cr_var:
+        ax[1].axhline(var, color=design_color_mapping("CR"), linewidth=1, alpha=0.5)
+    ax[1].set_xlabel(r"$w_{Interference}$", fontsize=22)
+    ax[1].set_ylabel("Variance", fontsize=22)
     ax[1].tick_params(axis="x", labelsize=20)
     ax[1].tick_params(axis="y", labelsize=20)
     ax[1].get_legend().set_visible(False)
@@ -183,7 +193,7 @@ def interference_bias_var_rr_vs_weight(
 
     sns.lineplot(
         data=res_igr,
-        x="w_balance",
+        x="w_interf",
         y="rr",
         hue="design_no_weights",
         linewidth=1,
@@ -198,7 +208,7 @@ def interference_bias_var_rr_vs_weight(
 
     sns.lineplot(
         data=res_igr,
-        x="w_balance",
+        x="w_interf",
         y="rr",
         hue="design_no_weights",
         marker="o",
@@ -210,7 +220,7 @@ def interference_bias_var_rr_vs_weight(
         ax=ax[2],
         errorbar=None,
     )
-    ax[2].set_xlabel(r"$w_{MaxMahalanobis}$", fontsize=22)
+    ax[2].set_xlabel(r"$w_{Interference}$", fontsize=22)
     ax[2].set_ylabel("Rejection Rate", fontsize=22)
     ax[2].tick_params(axis="x", labelsize=20)
     ax[2].tick_params(axis="y", labelsize=20)
@@ -231,17 +241,20 @@ def interference_bias_var_rr_vs_weight(
     )
 
     # Save figure
-    save_fname = "bias_rmse_rr_vs_weight.svg"
-    save_path = fig_dir / save_fname
+    save_fname = "bias_var_rr_vs_weight.svg"
+    save_dir = fig_dir / f"mirror_type-{mirror_type}" / f"estimator-{estimator}"
+    save_dir.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(save_path, bbox_inches="tight", transparent=True)
+    fig.savefig(save_dir / save_fname, bbox_inches="tight", transparent=True)
 
 
 def interference_bias_var_rr_vs_enum(
     b_weights: list[float],
     i_weights: list[float],
+    i_metrics: list[str],
     tau_size: float,
     mirror_type: str,
+    estimator: str,
     res_dir: Path,
     fig_dir: Path,
 ) -> None:
@@ -264,6 +277,7 @@ def interference_bias_var_rr_vs_enum(
     res_df = pd.read_csv(res_dir / "res_collated.csv")
     res_df["b_w"] = res_df["design"].apply(lambda x: _parse_design(x)[-2])
     res_df["i_w"] = res_df["design"].apply(lambda x: _parse_design(x)[-1])
+    res_df = res_df[res_df["design"].str.contains("|".join(i_metrics))]
 
     # Make plot for each weight combination
     for b_w, i_w in zip(b_weights, i_weights):
@@ -273,7 +287,8 @@ def interference_bias_var_rr_vs_enum(
             (((res_df["b_w"] == b_w) & (res_df["i_w"] == i_w)) 
              | (res_df["design"] == "CR"))
             & (res_df["tau_size"] == tau_size)
-            & (res_df["mirror_type"] == mirror_type)]
+            & (res_df["mirror_type"] == mirror_type)
+            & (res_df["estimator"] == estimator)]
 
         # Set up figure
         n_accepts = np.sort(res_df["n_accept"].unique())
@@ -289,7 +304,8 @@ def interference_bias_var_rr_vs_enum(
 
         # Plot bias, variance, and rejection rate against number of enumerated allocations
         for i, n_accept in enumerate(n_accepts):
-
+            print(n_accept)
+            
             # Plot bias
             sns.lineplot(
                 data=res_subdf[
@@ -332,11 +348,9 @@ def interference_bias_var_rr_vs_enum(
 
             # Plot variance
             sns.lineplot(
-                data=res_subdf[
-                    (res_subdf["n_accept"] == n_accept) & (res_subdf["design"] != "CR")
-                ],
+                data=res_subdf[(res_subdf["n_accept"] == n_accept)],
                 x="n_enum",
-                y="perc_CR_var",
+                y="var",
                 hue="design",
                 linewidth=1,
                 ax=axs[1][i],
@@ -348,11 +362,9 @@ def interference_bias_var_rr_vs_enum(
                 legend=False,
             )
             sns.lineplot(
-                data=res_subdf[
-                    (res_subdf["n_accept"] == n_accept) & (res_subdf["design"] != "CR")
-                ],
+                data=res_subdf[(res_subdf["n_accept"] == n_accept)],
                 x="n_enum",
-                y="perc_CR_var",
+                y="var",
                 hue="design",
                 marker="o",
                 markersize=4,
@@ -364,9 +376,8 @@ def interference_bias_var_rr_vs_enum(
                 errorbar=None,
             )
             axs[1][i].set_xlabel("")
-            axs[1][i].set_ylabel("% CR Variance", fontsize=20)
+            axs[1][i].set_ylabel("Variance", fontsize=20)
             axs[1][i].tick_params(axis="y", which="major", labelsize=20)
-            axs[1][i].yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100))
             axs[1][i].get_legend().set_visible(False)
 
             # Plot rejection rate
@@ -423,9 +434,10 @@ def interference_bias_var_rr_vs_enum(
         )
 
         # Save figure
-        save_fname = f"bias_rmse_rr_vs_enum_tau_size-{tau_size}_b-weight-{b_w}_i-weight-{i_w}.svg"
-        save_path = fig_dir / save_fname
-        fig.savefig(save_path, bbox_inches="tight", transparent=True)
+        save_fname = f"bias_var_rr_vs_enum_tau_size-{tau_size}_b-weight-{b_w}_i-weight-{i_w}.svg"
+        save_dir = fig_dir / f"mirror_type-{mirror_type}" / f"estimator-{estimator}" 
+        save_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_dir / save_fname, bbox_inches="tight", transparent=True)
 
 
 def interference_err_scatter(
@@ -484,18 +496,17 @@ def interference_err_scatter(
                 fitness_lbl = f"{b_weight:.2f}*{b_metric} + {i_weight:.2f}*{i_metric}"
                 all_fitness_lbls.append(fitness_lbl)
 
-                for design in ["IGR", "IGRg"]:
-                    tau_hat_fname = f"{fitness_lbl}_tau_hat.pkl"
-                    score_fname = f"{fitness_lbl}_scores.pkl"
 
-                    with open(res_dir / design / tau_hat_fname, "rb") as f:
-                        tau_hat = pickle.load(f)
-                        all_tau_hats.append(tau_hat)
-                        all_designs.append(np.repeat(design, len(tau_hat)))
-                    with open(res_dir / design / score_fname, "rb") as f:
-                        score_accepted_b, score_accepted_i = pickle.load(f)
-                        all_score_accepted_b.append(score_accepted_b)
-                        all_score_accepted_i.append(score_accepted_i)
+                tau_hat_fname = f"{fitness_lbl}_tau_hat.pkl"
+                score_fname = f"{fitness_lbl}_scores.pkl"
+                with open(res_dir / "IGR" / tau_hat_fname, "rb") as f:
+                    tau_hat = pickle.load(f)
+                    all_tau_hats.append(tau_hat)
+                    all_designs.append(np.repeat("IGR", len(tau_hat)))
+                with open(res_dir / "IGR" / score_fname, "rb") as f:
+                    score_accepted_b, score_accepted_i = pickle.load(f)
+                    all_score_accepted_b.append(score_accepted_b)
+                    all_score_accepted_i.append(score_accepted_i)
 
                 # Combine all estimates and scores into a single dataframe
                 all_designs = np.concatenate(all_designs)
@@ -573,16 +584,18 @@ if __name__ == "__main__":
     parser.add_argument("--gamma", type=float, default=0.5)
     parser.add_argument("--tau-size", type=float, default=0.3)
     parser.add_argument("--mirror-type", type=str, default="all")
+    parser.add_argument("--estimator", type=str, default="diff_in_means")
     parser.add_argument("--data-iter", type=int, default=0)
+    parser.add_argument("--fig-types", type=str, nargs="+", default=["est-prop-v-weight", "est-prop-v-enum", "err-scatter"])
 
     parser.add_argument(
-        "--balance-metric", type=str, nargs="+", default=["MaxMahalanobis"]
+        "--balance-metric", type=str, nargs="+", default=["Mahalanobis"]
     )
     parser.add_argument(
         "--interference-metric",
         type=str,
         nargs="+",
-        default=["FracExpo", "InvMinEuclidDist"],
+        default=["FracExpo"],
     )
     parser.add_argument("--w1", type=float, nargs="+", default=[0.25, 0.5, 0.75])
     parser.add_argument("--w2", type=float, nargs="+", default=[0.75, 0.5, 0.25])
@@ -597,109 +610,59 @@ if __name__ == "__main__":
     mirror_subdir = f"mirror_type-{args.mirror_type}"
 
     # Plot bias, variance, and rejection rate versus weight applied to balance metric
-    interference_bias_var_rr_vs_weight(
-        n_enum=args.n_enum,
-        n_accept=args.n_accept,
-        tau_size=args.tau_size,
-        mirror_type=args.mirror_type,
-        res_dir=out_dir / dgp_subdir,
-        fig_dir=out_dir / dgp_subdir,
-    )
+    if "est-prop-v-weight" in args.fig_types:
+        interference_bias_var_rr_vs_weight(
+            n_enum=args.n_enum,
+            n_accept=args.n_accept,
+            tau_size=args.tau_size,
+            i_metrics=args.interference_metric,
+            mirror_type=args.mirror_type,
+            estimator=args.estimator,
+            res_dir=out_dir / dgp_subdir,
+            fig_dir=out_dir / dgp_subdir / 'bias_var_rr_figs',
+        )
 
-    # Plot bias, RMSE, and rejection rate versus number of enumerated allocations
-    interference_bias_var_rr_vs_enum(
-        b_weights=args.w1,
-        i_weights=args.w2,
-        tau_size=args.tau_size,
-        mirror_type=args.mirror_type,
-        res_dir=out_dir / dgp_subdir,
-        fig_dir=out_dir / dgp_subdir,
-    )
+    if "est-prop-v-enum" in args.fig_types:
+        # Plot bias, var, and rejection rate versus number of enumerated allocations
+        interference_bias_var_rr_vs_enum(
+            b_weights=args.w1,
+            i_weights=args.w2,
+            i_metrics=args.interference_metric,
+            tau_size=args.tau_size,
+            mirror_type=args.mirror_type,
+            estimator=args.estimator,
+            res_dir=out_dir / dgp_subdir,
+            fig_dir=out_dir / dgp_subdir / 'bias_var_rr_figs',
+        )
 
-    res_dir = (
-        out_dir
-        / dgp_subdir
-        / f"{args.data_iter}"
-        / tau_subdir
-        / enum_subdir
-        / accept_subdir
-        / mirror_subdir
-    )
-    fig_dir = res_dir / "res_figs"
-    if not fig_dir.exists():
-        fig_dir.mkdir(parents=True)
+    if "err-scatter" in args.fig_types:
+        res_dir = (
+            out_dir
+            / dgp_subdir
+            / f"{args.data_iter}"
+            / tau_subdir
+            / enum_subdir
+            / accept_subdir
+            / mirror_subdir
+        )
+        fig_dir = res_dir / f"estimator-{args.estimator}" / "res_figs"
+        if not fig_dir.exists():
+            fig_dir.mkdir(parents=True)
 
-    with open(
-        out_dir / dgp_subdir / f"{args.data_iter}" / tau_subdir / "tau_true.pkl", "rb"
-    ) as f:
-        tau_true = pickle.load(f)
+        with open(
+            out_dir / dgp_subdir / f"{args.data_iter}" / tau_subdir / "tau_true.pkl", "rb"
+        ) as f:
+            tau_true = pickle.load(f)
 
-    # Scatter plot of error in estimate versus fitness score
-    interference_err_scatter(
-        b_metrics=args.balance_metric,
-        i_metrics=args.interference_metric,
-        b_weights=args.w1,
-        i_weights=args.w2,
-        agg_fn=LinComb,
-        data_iter=args.data_iter,
-        tau_true=tau_true,
-        res_dir=res_dir,
-        fig_dir=fig_dir,
-    )
-
-    # Replot IGR checks with only the specified weights
-    for b_metric in args.balance_metric:
-        for i_metric in args.interference_metric:
-            dp_fig, dp_axs = setup_fig(ncols=len(args.w1), sharex=False, sharey=True)
-            or_fig, or_axs = setup_fig(ncols=len(args.w1), sharex=False, sharey=True)
-
-            for i, (w1, w2) in enumerate(zip(args.w1, args.w2)):
-                fitness_lbl = f"{w1:.2f}*{b_metric} + {w2:.2f}*{i_metric}"
-
-                # IGR check 1: Discriminatory power
-                with open(
-                    res_dir / "IGR" / f"{b_metric} + {i_metric}_scores_pool.pkl", "rb"
-                ) as f:
-                    scores_pool_igr = pickle.load(f)
-                with open(
-                    res_dir / "IGRg" / f"{b_metric} + {i_metric}_scores_pool.pkl", "rb"
-                ) as f:
-                    scores_pool_igrg = pickle.load(f)
-                discriminatory_power(
-                    fitness_lbl=fitness_lbl,
-                    scores_1=scores_pool_igr[0],
-                    scores_1_g=scores_pool_igrg[0],
-                    scores_2=scores_pool_igr[1],
-                    scores_2_g=scores_pool_igrg[1],
-                    n_accept=args.n_accept,
-                    agg_fn=LinComb,
-                    agg_kwargs={"w1": w1, "w2": w2},
-                    ax=dp_axs[i],
-                )
-
-                # IGR check 2: Overrestriction
-                with open(res_dir / "CR" / "z.pkl", "rb") as f:
-                    z_accepted_cr = pickle.load(f)
-                with open(res_dir / "IGR" / f"{fitness_lbl}_z.pkl", "rb") as f:
-                    z_accepted_igr = pickle.load(f)
-                with open(res_dir / "IGRg" / f"{fitness_lbl}_z.pkl", "rb") as f:
-                    z_accepted_igrg = pickle.load(f)
-                overrestriction(
-                    fitness_lbl=fitness_lbl,
-                    design_to_z_accepted={
-                        "CR": z_accepted_cr,
-                        "IGR": z_accepted_igr,
-                        "IGRg": z_accepted_igrg,
-                    },
-                    ax=or_axs[i],
-                )
-            dp_fig.savefig(
-                fig_dir / f"{b_metric} + {i_metric}_discriminatory_power.svg",
-                bbox_inches="tight",
-                transparent=True,
-            )
-            or_fig.savefig(
-                fig_dir / f"{b_metric} + {i_metric}_overrestriction.svg",
-                bbox_inches="tight",
-                transparent=True,
-            )
+        # Scatter plot of error in estimate versus fitness score
+        interference_err_scatter(
+            b_metrics=args.balance_metric,
+            i_metrics=args.interference_metric,
+            b_weights=args.w1,
+            i_weights=args.w2,
+            agg_fn=LinComb,
+            data_iter=args.data_iter,
+            tau_true=tau_true,
+            res_dir=res_dir,
+            fig_dir=fig_dir,
+        )

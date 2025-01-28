@@ -11,8 +11,8 @@ import pickle
 from pathlib import Path
 from tqdm import tqdm
 
-from src.aesthetics import setup_fig, adjust_joint_grid_limits, save_joint_grids
-from src.estimators import get_tau_true, diff_in_means, get_pval
+from src.aesthetics import setup_fig
+from src.estimators import get_tau_true, diff_in_means, get_pval, linear_regression
 from src.igr import igr_enumeration, igr_restriction
 from src.igr_checks import (
     discriminatory_power, 
@@ -24,7 +24,7 @@ from src.igr_enhancements import get_genetic_kwargs
 from src.metrics import get_metric
 from src.aggregators import get_agg
 
-from vignettes.data import gen_kenya_data, gen_kenya_network, get_kenya_sch_y_obs
+from vignettes.data import gen_kenya_data, gen_kenya_network, get_kenya_y_obs, get_kenya_sch_y_obs
 from vignettes.collate import collect_res_csvs
 
 def interference_config():
@@ -48,7 +48,7 @@ def interference_config():
     parser.add_argument("--n-enum", type=int, default=int(1e5))
     parser.add_argument("--n-accept", type=int, default=500)
     parser.add_argument("--mirror-type", type=str, default="all")
-    parser.add_argument("--balance-metric", type=str, nargs="+", default=["MaxMahalanobis"])
+    parser.add_argument("--balance-metric", type=str, nargs="+", default=["Mahalanobis"])
     parser.add_argument("--interference-metric", type=str, nargs="+", default=["FracExpo", "InvMinEuclidDist"])
     parser.add_argument("--agg", type=str, default="LinComb")
     parser.add_argument("--w1", type=float, nargs="+", default=[0.25, 0.5, 0.75, 0, 0.125, 0.375, 0.625, 0.875, 1])
@@ -63,6 +63,7 @@ def interference_config():
     parser.add_argument("--mut-rate", type=float, default=0.01)
     parser.add_argument("--eps", type=float, default=0.05)
 
+    parser.add_argument("--save-checks-figs", action="store_true")
     parser.add_argument("--out-dir", type=str, default="res/vig2_interference")
 
     args = parser.parse_args()
@@ -214,15 +215,33 @@ def restriction(
 
     return z_accepted, scores_pool, scores_accepted
 
+
+def bias(
+    y_0: np.ndarray,
+    y_1: np.ndarray,
+    z: np.ndarray,
+    exposure_kwargs: dict={},
+):
+    deltas = np.mean(z, axis=0) - 0.5
+    y_obs = get_kenya_y_obs(y_0, y_1, z, **exposure_kwargs)
+    mean_spill_eff = (y_obs * (z == 0) - y_0).mean(axis=0)
+    weighted_mean_spill_eff = np.dot(mean_spill_eff, 1 - 2*deltas) / np.sum(1 - 2*deltas)
+
+    return weighted_mean_spill_eff
+
 def run_trial_and_analyze(
         design: str, 
+        y_0: np.ndarray,
+        y_1: np.ndarray,
         tau_true: float,
         z_accepted: np.ndarray, 
         save_dir: Path, 
         data_iter: int, 
         exposure_kwargs: dict={},
         fitness_lbl: str=None,
-        subdir_dict: dict={}
+        subdir_dict: dict={},
+        est_fn: callable=diff_in_means,
+        est_fn_kwargs: dict={}
     ) -> None:
     """
     "Run" a trial and get estimation and inference results
@@ -247,11 +266,11 @@ def run_trial_and_analyze(
 
     # Define save paths for the estimated treatment effects and the bias/rmse/rr results
     if fitness_lbl is not None:
-        tau_hat_path = save_dir_design / f"{fitness_lbl}_tau_hat.pkl"
-        res_path = save_dir_design / f"{fitness_lbl}_res.csv"
+        tau_hat_path = save_dir_design / f"{fitness_lbl}_{est_fn.__name__}_tau_hat.pkl"
+        res_path = save_dir_design / f"{fitness_lbl}_{est_fn.__name__}_res.csv"
     else:
-        tau_hat_path = save_dir_design / "tau_hat.pkl"
-        res_path = save_dir_design / "res.csv"
+        tau_hat_path = save_dir_design / f"{est_fn.__name__}_tau_hat.pkl"
+        res_path = save_dir_design / f"{est_fn.__name__}_res.csv"
 
     # Load estimated effects and results CSV if they already exist
     if tau_hat_path.exists() and res_path.exists():
@@ -265,13 +284,21 @@ def run_trial_and_analyze(
         # Get mean observed outcomes at the school-level
         sch_y_obs_accepted = get_kenya_sch_y_obs(y_0, y_1, z_accepted, **exposure_kwargs)
 
-        # Get difference in means estimates
-        tau_hat = np.array([diff_in_means(z, sch_y_obs) for z, sch_y_obs in zip(z_accepted, sch_y_obs_accepted)])
+        # Get estimates
+        tau_hat = np.array([est_fn(z, sch_y_obs, **est_fn_kwargs) for z, sch_y_obs in zip(z_accepted, sch_y_obs_accepted)])
 
         # Get p-values
-        p_val = Parallel(n_jobs=-2, verbose=1)(delayed(get_pval)(z_accepted, sch_y_obs_accepted, idx) 
-                                               for idx in tqdm(range(z_accepted.shape[0])))
-        
+        p_val = Parallel(n_jobs=-2, verbose=1)(
+            delayed(get_pval)(
+                z_accepted,
+                sch_y_obs_accepted,
+                idx,
+                est_fn=est_fn,
+                **est_fn_kwargs
+            )
+            for idx in tqdm(range(z_accepted.shape[0]))
+        )
+
         # Get bias, RMSE, and rejection rate
         if fitness_lbl is not None:
             design = f"{design} - {fitness_lbl}"
@@ -282,6 +309,7 @@ def run_trial_and_analyze(
         # Save results
         res_dict = {
             "design": design,
+            "estimator": est_fn.__name__,
             "data_iter": data_iter,
             "bias": bias,
             "rmse": rmse,
@@ -289,7 +317,7 @@ def run_trial_and_analyze(
             **subdir_dict
         }
         res_df = pd.DataFrame([res_dict])
-        
+
         with open(tau_hat_path, "wb") as f:
             pickle.dump(tau_hat, f) 
         res_df.to_csv(res_path, index=False)
@@ -341,7 +369,7 @@ if __name__ == "__main__":
     # Run IGR and IGRg for each combination of balance and interference metrics
     kwargs["exposure"]["A"] = A
     kwargs["exposure"]["cluster_lbls"] = X_df["sch"].to_numpy()
-    kwargs["b_metric"]["X"] = X_df.to_numpy()
+    kwargs["b_metric"]["X"] = X_df.drop(columns=['set', 'sch_in_set', 'sch']).to_numpy()
     kwargs["b_metric"]["cluster_lbls"] = kwargs["exposure"]["cluster_lbls"]
     i_metric_kwargs_opts = {
         "FracExpo": kwargs["exposure"],
@@ -364,63 +392,49 @@ if __name__ == "__main__":
             i_metric_kwargs=kwargs["i_metric"])
         run_trial_and_analyze(
             "CR",
+            y_0, y_1,
             tau_true, z_accepted_cr,
             save_dir_res, args.data_iter,
             exposure_kwargs=kwargs["exposure"],
             subdir_dict=kwargs["save"]
         )
-
-        # Initialize plots for IGR checks
-        if not (save_dir_res / "igr_checks").exists():
-            (save_dir_res / "igr_checks").mkdir()
-        dp_pool_fig, dp_pool_ax = setup_fig(ncols = 1, sharex=False, sharey=True)
-        dp_fig, dp_axs = setup_fig(ncols = len(args.w1), sharex=False, sharey=True)
-        or_fig, or_axs = setup_fig(ncols = len(args.w1), sharex=True, sharey=True)
-        dt_grids = []
-        dt_grid_save_fnames = []
-
-        # IGR check: Desiderata tradeoff in pool of candidate allocations
-        desiderata_tradeoffs_pool(
-            metric_lbls = [b_metric_name, i_metric_name],
-            scores_pool = scores_pool_cr,
-            ax = dp_pool_ax[0],
-            title=rf"$\gamma = {args.gamma}$"
+        X_sch_lvl = X_df.groupby("sch").mean().reset_index().drop(columns=["set", "sch_in_set"])
+        run_trial_and_analyze(
+            "CR",
+            y_0, y_1,
+            tau_true, z_accepted_cr,
+            save_dir_res, args.data_iter,
+            exposure_kwargs=kwargs["exposure"],
+            subdir_dict=kwargs["save"],
+            est_fn=linear_regression,
+            est_fn_kwargs={"X": X_sch_lvl.to_numpy()}
         )
-        dt_pool_save_fname = f"{args.data_iter}_{b_metric_name} + {i_metric_name}_desiderata_tradeoffs_pool.svg"
-        dp_pool_fig.savefig(save_dir_res / "igr_checks" / dt_pool_save_fname,
-                            transparent=True, bbox_inches="tight")
 
+        if args.save_checks_figs:
+            # Initialize plots for IGR checks
+            if not (save_dir_res / "igr_checks").exists():
+                (save_dir_res / "igr_checks").mkdir()
+            
         # Iterate over metric weighting schemes
         for i, (w1, w2) in enumerate(zip(args.w1, args.w2)):
+
+            if args.save_checks_figs:
+                dp_fig, dp_axs = setup_fig(ncols = 1, sharex=False, sharey=True, suptitle="Discriminatory Power")
+                or_fig, or_axs = setup_fig(ncols = 1, sharex=True, sharey=True, suptitle="Approx Pairwise Assignment Corr")
+                dt_fig, dt_axs = setup_fig(ncols = 2, sharex=True, sharey=True, suptitle="Desiderata Tradeoffs")
+
+                # IGR check: Desiderata tradeoff in pool of candidate allocations
+                desiderata_tradeoffs_pool(
+                    metric_lbls = [b_metric_name, i_metric_name],
+                    scores_pool = scores_pool_cr,
+                    ax = dt_axs[0]
+                )
             kwargs["agg"] = {"w1": w1, "w2": w2}
             fitness_lbl = f"{w1:.2f}*{b_metric_name} + {w2:.2f}*{i_metric_name}"
 
             # Run IGR
             z_accepted_igr, scores_pool_igr, scores_accepted_igr = restriction(
                 "IGR",
-                z_pool, args.n_accept, 
-                save_dir_res, 
-                fitness_lbl=fitness_lbl,
-                b_metric=b_metric, 
-                i_metric=i_metric, 
-                agg_fn=agg_fn, 
-                mirror_type=args.mirror_type,
-                b_metric_kwargs=kwargs["b_metric"],
-                i_metric_kwargs=kwargs["i_metric"],
-                agg_kwargs=kwargs["agg"]
-            )
-            run_trial_and_analyze(
-                "IGR",
-                tau_true, z_accepted_igr,
-                save_dir_res, args.data_iter,
-                fitness_lbl=fitness_lbl,
-                exposure_kwargs=kwargs["exposure"],
-                subdir_dict=kwargs["save"]
-            )
-
-            # Run IGRg
-            z_accepted_igrg, scores_pool_igrg, scores_accepted_igrg = restriction(
-                "IGRg",
                 z_pool, args.n_accept, 
                 save_dir_res, 
                 fitness_lbl=fitness_lbl,
@@ -431,60 +445,71 @@ if __name__ == "__main__":
                 genetic_kwargs=kwargs["genetic"]
             )
             run_trial_and_analyze(
-                "IGRg",
-                tau_true, z_accepted_igrg,
+                "IGR",
+                y_0, y_1,
+                tau_true, z_accepted_igr,
                 save_dir_res, args.data_iter,
                 fitness_lbl=fitness_lbl,
                 exposure_kwargs=kwargs["exposure"],
-                subdir_dict=kwargs["save"]
+                subdir_dict=kwargs["save"],
+                est_fn=diff_in_means
             )
-
-            # IGR check 1: Discriminatory power
-            discriminatory_power(
+            run_trial_and_analyze(
+                "IGR",
+                y_0, y_1,
+                tau_true, z_accepted_igr,
+                save_dir_res, args.data_iter,
                 fitness_lbl=fitness_lbl,
-                scores_1=scores_pool_igr[0], scores_1_g=scores_pool_igrg[0],
-                scores_2=scores_pool_igr[1], scores_2_g=scores_pool_igrg[1],
-                n_accept=args.n_accept,
-                agg_fn=agg_fn, agg_kwargs=kwargs["agg"],
-                ax=dp_axs[i]
+                exposure_kwargs=kwargs["exposure"],
+                subdir_dict=kwargs["save"],
+                est_fn=linear_regression,
+                est_fn_kwargs={"X": X_sch_lvl.to_numpy()}
             )
-            # IGR check 2: Overrestriction
-            overrestriction(
-                fitness_lbl = fitness_lbl,
-                design_to_z_accepted={"CR": z_accepted_cr, 
-                                        "IGR": z_accepted_igr, 
-                                        "IGRg": z_accepted_igrg},
-                ax=or_axs[i]
-            )
-            # IGR check 3: Navigating desiderata tradeoffs
-            dt_grid = desiderata_tradeoffs(
-                metric_lbls = [b_metric_name, i_metric_name],
-                fitness_lbl = fitness_lbl,
-                design_to_scores={"CR": scores_accepted_cr,
-                                    "IGR": scores_accepted_igr,
-                                    "IGRg": scores_accepted_igrg},
-            )
-            dt_grids.append(dt_grid)
+            
 
-            # Save IGR checks
-            metrics_lbl = f"{b_metric_name} + {i_metric_name}"
-            dp_fig_save_fname = f"{metrics_lbl}_discriminatory_power.svg"
-            or_fig_save_fname = f"{metrics_lbl}_overrestriction.svg"
-            dt_grid_save_fname = f"{fitness_lbl}_desiderata_tradeoffs.svg"
-            dt_grid_save_fnames.append(dt_grid_save_fname)
+            if args.save_checks_figs:
+                # IGR check 1: Discriminatory power
+                discriminatory_power(
+                    fitness_lbl=fitness_lbl,
+                    scores_1=scores_pool_igr[0], 
+                    scores_2=scores_pool_igr[1],
+                    n_accept=args.n_accept,
+                    agg_fn=agg_fn, agg_kwargs=kwargs["agg"],
+                    ax=dp_axs[0]
+                )
+                # IGR check 2: Overrestriction
+                or_summ = overrestriction(
+                    fitness_lbl = fitness_lbl,
+                    design_to_z_accepted={"CR": z_accepted_cr, 
+                                        "IGR": z_accepted_igr},
+                    ax=or_axs[0]
+                )
+                # IGR check 3: Navigating desiderata tradeoffs
+                desiderata_tradeoffs(
+                    metric_lbls = [b_metric_name, i_metric_name],
+                    fitness_lbl = fitness_lbl,
+                    design_to_scores={"CR": scores_accepted_cr,
+                                    "IGR": scores_accepted_igr},
+                    ax=dt_axs[1]
+                )
 
-            dp_fig.savefig(save_dir_res / "igr_checks" / dp_fig_save_fname, transparent=True, bbox_inches="tight")
-            or_fig.savefig(save_dir_res / "igr_checks" / or_fig_save_fname, transparent=True, bbox_inches="tight")
-            dt_grid.savefig(save_dir_res / "igr_checks" / dt_grid_save_fname, transparent=True, bbox_inches="tight")
+            if args.save_checks_figs:
+                # Save IGR checks
+                dp_fig_save_fname = f"{fitness_lbl}_discriminatory_power.svg"
+                or_fig_save_fname = f"{fitness_lbl}_overrestriction.svg"
+                dt_fig_save_fname = f"{fitness_lbl}_desiderata_tradeoffs.svg"
 
-            plt.close(dp_fig)
-            plt.close(or_fig)
-            plt.close(dt_grid.figure) 
+                dp_fig.savefig(save_dir_res / "igr_checks" / dp_fig_save_fname, transparent=True, bbox_inches="tight")
+                or_fig.savefig(save_dir_res / "igr_checks" / or_fig_save_fname, transparent=True, bbox_inches="tight")
+                dt_fig.savefig(save_dir_res / "igr_checks" / dt_fig_save_fname, transparent=True, bbox_inches="tight")
+
+                plt.close(dp_fig)
+                plt.close(or_fig)
+                plt.close(dt_fig) 
 
             # Collect estimation and inference results
             collect_res_csvs(save_dir_data.parent, bench_design="CR", variance=True)
 
-        # Adjust axis limits to be the same for all desiderata tradeoff grids
-        # adjust_joint_grid_limits(dt_grids, save_dir_res / "igr_checks", dt_grid_save_fnames)
-        adjust_joint_grid_limits(dt_grids)
-        save_joint_grids(dt_grids, save_dir_res / "igr_checks", dt_grid_save_fnames)
+            if args.save_checks_figs:
+                # Save overrestriction summary
+                or_summ.to_csv(save_dir_res / "igr_checks" / f"{fitness_lbl}_overrestriction.csv", index=False)

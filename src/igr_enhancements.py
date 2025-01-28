@@ -415,7 +415,7 @@ def add_mirrors(
     """
     Add mirrors of accepted allocations
     Args:
-        - mirror_type: which type of addition to use ("all" or "good")
+        - mirror_type: which type of addition to use ("all", "good", or "none")
         - z_pool_accepted: accepted treatment allocations
         - metric_1: first inspection metric
         - scores_1: scores from first inspection metric
@@ -463,6 +463,8 @@ def add_mirrors(
             agg_fn=agg_fn,
             agg_kwargs=agg_kwargs
         )
+    elif mirror_type == "none":
+        pass
     else:
         raise ValueError(f"Invalid mirror type: {mirror_type}. Must be 'all' or 'good'")
     

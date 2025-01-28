@@ -16,8 +16,10 @@ notebooks/
 data/
 output/
 res/
+res_resub/
 figs/
-manu_figs/
+figs_resub/
+rerand_type1error
 
 # Project-specific
 _extras/

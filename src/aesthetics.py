@@ -28,43 +28,24 @@ def design_color_mapping(design: str, fitness_lbl: str = None) -> str:
         match_str = f"{design} - {fitness_lbl}"
     # IGR with balance metrics are orange scheme
     if (
-        re.match(pattern=r"^(?:IGR|IGR (GFR)) - MaxMahalanobis$", string=match_str)
+        re.match(pattern=r"^(?:IGR|IGR (GFR)) - Mahalanobis$", string=match_str)
         is not None
     ):
-        return "lightsalmon"
+        return "orangered"
     if (
         re.match(pattern=r"^(?:IGR|IGR (GFR)) - SumMaxAbsSMD$", string=match_str)
         is not None
     ):
         return "goldenrod"
-    if (
-        re.match(pattern=r"^(?:IGRg|IGRg (GFR)) - MaxMahalanobis$", string=match_str)
-        is not None
-    ):
-        return "orangered"
-    if (
-        re.match(pattern=r"^(?:IGRg|IGRg (GFR)) - SumMaxAbsSMD$", string=match_str)
-        is not None
-    ):
-        return "sienna"
 
     # IGR with aggregated fitness fn, including an exposure metric, are green scheme
     if re.match(pattern=r"^IGR - (.*?)FracExpo$", string=match_str) is not None:
-        return "darkseagreen"
-    if re.match(pattern=r"^IGRg - (.*?)FracExpo$", string=match_str) is not None:
         return "seagreen"
 
     # IGR with aggregated fitness fn, including a distance metric, are purple scheme
     if re.match(pattern=r"^IGR - (.*?)InvMinEuclidDist$", string=match_str) is not None:
         # return "thistle"
         return "orchid"
-    if (
-        re.match(pattern=r"^IGRg - (.*?)InvMinEuclidDist$", string=match_str)
-        is not None
-    ):
-        # return "mediumorchid"
-        return "purple"
-
     else:
         raise ValueError(f"Unknown design and metric: {design}, {fitness_lbl}")
 
@@ -115,7 +96,14 @@ def get_design_hue_order(rand_mdl_names: List[str]) -> List[str]:
     return ordered_names
 
 
-def setup_fig(ncols: int, sharex: bool, sharey: bool, cbar: bool = False) -> tuple:
+def setup_fig(
+    ncols: int,
+    sharex: bool,
+    sharey: bool,
+    cbar: bool = False,
+    nrows: int = 1,
+    suptitle: str = None,
+) -> tuple[plt.Figure, List[plt.Axes]]:
     """
     Create figure and axes for subplots
     Args:
@@ -125,9 +113,9 @@ def setup_fig(ncols: int, sharex: bool, sharey: bool, cbar: bool = False) -> tup
         - cbar: Include color
     """
     fig, axs = plt.subplots(
-        1,
+        nrows,
         ncols,
-        figsize=(6 * ncols, 6),
+        figsize=(6 * ncols, 6 * nrows),
         sharex=sharex,
         sharey=sharey,
     )
@@ -136,15 +124,24 @@ def setup_fig(ncols: int, sharex: bool, sharey: bool, cbar: bool = False) -> tup
     if ncols == 1:
         axs = [axs]
     for ax in axs:
-        ax.tick_params(axis="both", which="major", length=6, width=1.5, labelsize=20)
-        ax.tick_params(axis="both", which="minor", length=3, width=1, labelsize=16)
+        if nrows > 1:
+            for a in ax:
+                a.tick_params(axis="both", which="major", length=6, width=1.5, labelsize=20)
+                a.tick_params(axis="both", which="minor", length=3, width=1, labelsize=16)
+        else:
+            ax.tick_params(axis="both", which="major", length=6, width=1.5, labelsize=20)
+            ax.tick_params(axis="both", which="minor", length=3, width=1, labelsize=16)
+
+    if suptitle is not None:
+        fig.suptitle(suptitle, fontsize=26, fontweight="demibold")
+        fig.tight_layout(rect=[0, 0, 1, 0.92])
 
     return fig, axs
 
 
 def format_ax(ax: plt.Axes, lbl_size:int=16):
     """
-    Format axes for seaborn plots
+    Format axes for seaborn plots 
     Args:
         - ax: Axes object
         - lbl_size: Font size for axis labels

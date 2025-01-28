@@ -19,7 +19,7 @@ from src.estimators import (
     get_pval
 )
 from src.igr import igr_enumeration, igr_restriction
-from src.igr_checks import discriminatory_power, overrestriction
+from src.igr_checks import discriminatory_power, overrestriction, overrestriction_heatmap
 from src.igr_enhancements import get_genetic_kwargs
 from src.metrics import get_metric
 
@@ -357,7 +357,7 @@ if __name__ == "__main__":
             n_accept=args.n_accept,
             ax=dp_axs[i]
         )
-        overrestriction(
+        or_summ = overrestriction(
             fitness_lbl=metric_name,
             design_to_z_accepted={
                 "CR": z_accepted_cr,
@@ -373,9 +373,11 @@ if __name__ == "__main__":
             (save_dir_res / "igr_checks").mkdir()
         dp_fig.savefig(save_dir_res / "igr_checks" / f"discriminatory_power.svg", transparent=True, bbox_inches="tight")
         or_fig.savefig(save_dir_res / "igr_checks" / f"overrestriction.svg", transparent=True, bbox_inches="tight")
+
         plt.close(dp_fig)
         plt.close(or_fig)
 
         # Save estimation and inference results 
         collect_res_csvs(save_dir_data.parent)
+        or_summ.to_csv(save_dir_res / "igr_checks" / "overrestriction_summary.csv", index=False)
         

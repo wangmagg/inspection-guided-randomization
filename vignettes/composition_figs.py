@@ -31,8 +31,8 @@ if __name__ == "__main__":
     # Load data and set parameters
     X = pd.read_csv(out_dir / dgp_subdir / f"{args.data_iter}" / "X.csv")
     X_no_gender = X.drop(columns="gender")
-    designs = ['GFR', 'IGR', 'IGRg']
-    metric_lbls = ["SumMaxAbsSMD", "MaxMahalanobis"]
+    designs = ['GFR', 'IGR']
+    metric_lbls = ["Mahalanobis"]
     n_arms = 2
 
     n_groups = n_arms * len(args.rhos)

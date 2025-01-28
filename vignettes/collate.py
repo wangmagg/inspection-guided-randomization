@@ -13,7 +13,7 @@ def perc_of_benchmark(bench_design: str, group: Union[DataFrameGroupBy, pd.DataF
         - col: column name of metric
     """
     ref_value = group[group["design"].str.contains(bench_design)][col].values[0]
-    perc_reduc = group[col].apply(lambda x: x / ref_value * 100)
+    perc_reduc = group[col].apply(lambda x: abs(x) / abs(ref_value) * 100)
     return perc_reduc
 
 def collect_res_csvs(save_dir: str, bench_design="CR", variance=False) -> None:
@@ -48,9 +48,10 @@ def collect_res_csvs(save_dir: str, bench_design="CR", variance=False) -> None:
             res[var_col] = var
             var_cols.append(var_col)
 
-    group_cols = res.columns[~res.columns.str.contains("^bias.*?$|^rmse.*?$|^var.*?$|^rr.*?$|^design$|^data_iter")]
-    design_group_cols = group_cols.tolist() + ["design"]
-    iter_group_cols = group_cols.tolist() + ["data_iter"]
+    group_cols = res.columns[~res.columns.str.contains("^bias.*?$|^rmse.*?$|^var.*?$|^rr.*?$|^design$|^data_iter|estimator")]
+    design_group_cols = group_cols.tolist() + ["design", "estimator"]
+    iter_group_cols = group_cols.tolist() + ["data_iter", "estimator"]
+    # estimator_group_cols = group_cols.tolist() + ["estimator"]
 
     res.sort_values(by=iter_group_cols, inplace=True)
     res_grouped = res.groupby(iter_group_cols, dropna=False)

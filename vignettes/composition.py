@@ -46,7 +46,7 @@ def composition_config():
     parser.add_argument("--n-enum", type=int, default=int(1e5))
     parser.add_argument("--n-accept", type=int, default=500)
     parser.add_argument(
-        "--metric", type=str, nargs="+", default=["MaxMahalanobis", "SumMaxAbsSMD"]
+        "--metric", type=str, nargs="+", default=["Mahalanobis"]
     )
 
     parser.add_argument("--genetic-iters", type=int, default=3)
@@ -298,8 +298,8 @@ if __name__ == "__main__":
     )
 
     # Run IGR and IGRg for each metric
-    dp_fig, dp_axs = setup_fig(ncols=len(args.metric), sharex=False, sharey=True)
-    or_fig, or_axs = setup_fig(ncols=len(args.metric), sharex=True, sharey=True)
+    dp_fig, dp_axs = setup_fig(ncols=len(args.metric), sharex=False, sharey=True, suptitle="Discriminatory Power")
+    or_fig, or_axs = setup_fig(ncols=len(args.metric), sharex=True, sharey=True, suptitle="Approx Pairwise Assignment Corr")
 
     for i, metric_name in enumerate(args.metric):
         metric = get_metric(metric_name)
@@ -346,33 +346,10 @@ if __name__ == "__main__":
             subdir_dict=kwargs["save"],
         )
 
-        # Run IGRg
-        z_accepted_igr_g, scores_pool_igrg, scores_accepted_igrg = restriction(
-            "IGRg",
-            z_pool,
-            args.n_accept,
-            save_dir_res,
-            metric=metric,
-            metric_kwargs=kwargs["metric"],
-            genetic_kwargs=kwargs["genetic"],
-            mirror_kwargs=kwargs["mirror"],
-        )
-        run_trial_and_analyze(
-            "IGRg",
-            y,
-            z_accepted_igr_g,
-            kwargs["mirror"]["same_rho_pairs"],
-            save_dir_res,
-            args.data_iter,
-            metric_lbl=metric_name,
-            subdir_dict=kwargs["save"],
-        )
-
         # Perform IGR checks
         discriminatory_power(
             fitness_lbl=metric_name,
             scores_1=scores_pool_igr,
-            scores_1_g=scores_pool_igrg,
             n_accept=args.n_accept,
             ax=dp_axs[i],
         )
@@ -380,8 +357,7 @@ if __name__ == "__main__":
             fitness_lbl=metric_name,
             design_to_z_accepted={
                 "GFR": z_accepted_gfr,
-                "IGR": z_accepted_igr,
-                "IGRg": z_accepted_igr_g,
+                "IGR": z_accepted_igr
             },
             ax=or_axs[i],
         )

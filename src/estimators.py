@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.linear_model import LinearRegression
 
 
 def get_tau_true(y_0: np.ndarray, y_1: np.ndarray, comps: np.ndarray) -> np.ndarray:
@@ -71,6 +72,22 @@ def diff_in_means_mult_arm(z, y_obs, comps):
 
     return tau_hats
 
+def linear_regression(z, y_obs, X):
+    """
+    Get treatment effect estimate using linear regression
+    Args:
+        - z: Treatment assignment vector
+        - y_obs: Observed outcomes
+        - X: Covariate matrix
+    """
+    z = np.atleast_2d(z)
+    tau_hats = np.zeros(z.shape[0])
+    for i, z_i in enumerate(z):
+        X_z = np.vstack([X.T, z_i]).T
+        mdl = LinearRegression().fit(X_z, y_obs)
+        tau_hats[i] = mdl.coef_[-1]
+
+    return tau_hats
 
 def get_cluster_mask(z_cluster, mapping):
     """
@@ -164,7 +181,7 @@ def get_pval_qb(z_pool, y_obs_pool, idx, blocks, n_blocks, weights, comps):
     return np.mean(abs(t_null) >= abs(t_obs), axis=0)
 
 
-def get_pval(z_pool, y_obs_pool, idx, comps, est_fn, **kwargs):
+def get_pval(z_pool, y_obs_pool, idx, est_fn, **kwargs):
     """
     Get p-value for treatment effect estimate
     Args:
@@ -175,9 +192,9 @@ def get_pval(z_pool, y_obs_pool, idx, comps, est_fn, **kwargs):
         - est_fn: Function to estimate treatment effect
         - **kwargs: Additional arguments for est_fn
     """
-    t_obs = est_fn(z_pool[idx, :], y_obs_pool[idx, :], comps, **kwargs)
+    t_obs = est_fn(z_pool[idx, :], y_obs_pool[idx, :], **kwargs)
     t_null = np.array(
-        [est_fn(z, y_obs_pool[idx, :], comps, **kwargs) for z in z_pool]
+        [est_fn(z, y_obs_pool[idx, :], **kwargs) for z in z_pool]
     )
 
     return np.mean(abs(t_null) >= abs(t_obs), axis=0)
